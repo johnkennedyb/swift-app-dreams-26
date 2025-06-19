@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,7 +8,6 @@ import {
   Home, 
   User, 
   Settings, 
-  Bell, 
   ArrowLeft,
   MessageCircle,
   Send,
@@ -23,10 +22,13 @@ import {
   Shield,
   Globe
 } from "lucide-react";
+import AuthScreen from "@/components/auth/AuthScreen";
+import AppHeader from "@/components/layout/AppHeader";
 
 const Index = () => {
+  const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("home");
-  const [currentView, setCurrentView] = useState("main"); // main, project-detail, support-flow, confirmation, send-money, request-support
+  const [currentView, setCurrentView] = useState("main");
   const [selectedProject, setSelectedProject] = useState(null);
   const [supportAmount, setSupportAmount] = useState("");
   const [pin, setPin] = useState("");
@@ -35,7 +37,29 @@ const Index = () => {
   const [sendAmount, setSendAmount] = useState("");
   const [recipientId, setRecipientId] = useState("");
 
-  const userBalance = 45750.80;
+  useEffect(() => {
+    const savedUser = localStorage.getItem('appbacus_user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+  }, []);
+
+  const handleLogin = (userData: any) => {
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('appbacus_user');
+    setUser(null);
+    setActiveTab("home");
+    setCurrentView("main");
+  };
+
+  if (!user) {
+    return <AuthScreen onLogin={handleLogin} />;
+  }
+
+  const userBalance = user.balance || 45750.80;
   const currency = "USD";
   const currencySymbol = "$";
 
@@ -56,22 +80,7 @@ const Index = () => {
   const renderHomeTab = () => (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Good morning</h1>
-          <p className="text-gray-600">Ready to support today?</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
-          </Button>
-          <Avatar className="w-10 h-10">
-            <AvatarImage src="https://images.unsplash.com/photo-1494790108755-2616b612b4c0?w=150&h=150&fit=crop&crop=face" />
-            <AvatarFallback>JD</AvatarFallback>
-          </Avatar>
-        </div>
-      </div>
+      <AppHeader user={user} onLogout={handleLogout} />
 
       {/* Balance Card */}
       <Card className="bg-gradient-to-br from-purple-600 to-purple-700 text-white border-0">
@@ -406,161 +415,45 @@ const Index = () => {
 
   const renderSupportTab = () => (
     <div className="space-y-6">
-      {/* Project List */}
-      <div className="space-y-4">
-        {projects.map((project) => (
-          <Card key={project.id} className="p-4 cursor-pointer hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Avatar className="w-12 h-12">
-                  <AvatarImage src={project.avatar} />
-                  <AvatarFallback>{project.title.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-semibold">{project.title}</h3>
-                  <p className="text-sm text-gray-600">Members: {project.members}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-500 mb-2">{project.date}</p>
-                <Button 
-                  className="bg-purple-600 hover:bg-purple-700"
-                  onClick={() => {
-                    setSelectedProject(project);
-                    setCurrentView("project-detail");
-                  }}
-                >
-                  Support
-                </Button>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {/* Recent Support Section */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-bold">Your most recent support</h2>
-        <Card className="p-6 text-center">
-          <Avatar className="w-20 h-20 mx-auto mb-4">
-            <AvatarImage src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face" />
-            <AvatarFallback>PA</AvatarFallback>
-          </Avatar>
-          <p className="font-semibold mb-4">Supported Project Alpha</p>
-          <div className="flex justify-center space-x-2 mb-4">
-            <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-            <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-          </div>
-        </Card>
-        <Button className="w-full bg-purple-600 hover:bg-purple-700">
-          Ask for Support
-        </Button>
-      </div>
+      <h2 className="text-xl font-bold">Support Requests</h2>
+      <p className="text-gray-600">View and manage support requests from your community.</p>
     </div>
   );
 
   const renderProjectsTab = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Avatar className="w-12 h-12">
-            <AvatarImage src="https://images.unsplash.com/photo-1494790108755-2616b612b4c0?w=150&h=150&fit=crop&crop=face" />
-            <AvatarFallback>AD</AvatarFallback>
-          </Avatar>
-          <div>
-            <h2 className="font-semibold">Project Alpha</h2>
-            <p className="text-sm text-gray-600">Current Balance: ₦25,000</p>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className="text-sm font-semibold">Total</p>
-          <p className="text-sm font-semibold">members</p>
-        </div>
-      </div>
-
-      {/* Transaction Filters */}
-      <div className="flex space-x-2">
-        <Button variant="outline" size="sm">All</Button>
-        <Button variant="outline" size="sm">Credit</Button>
-        <Button variant="outline" size="sm">Debit</Button>
-        <Button variant="outline" size="sm">Yet to support</Button>
-      </div>
-
-      {/* Transaction Table */}
-      <Card>
-        <div className="p-4">
-          <div className="grid grid-cols-5 gap-2 text-xs font-semibold text-gray-600 mb-3">
-            <div>A/Z</div>
-            <div>Sender</div>
-            <div>₦</div>
-            <div>Time</div>
-            <div>Balance</div>
-          </div>
-          {transactions.map((transaction) => (
-            <div key={transaction.id} className="grid grid-cols-5 gap-2 text-sm py-2 border-t">
-              <div>{transaction.id}</div>
-              <div>{transaction.sender}</div>
-              <div>₦{transaction.amount}</div>
-              <div>{transaction.time}</div>
-              <div>{transaction.balance > 0 ? `₦${transaction.balance}` : "—"}</div>
-            </div>
-          ))}
-        </div>
-      </Card>
+      <h2 className="text-xl font-bold">My Projects</h2>
+      <p className="text-gray-600">Manage your funding projects and track progress.</p>
     </div>
   );
 
   const renderProfileTab = () => (
     <div className="space-y-6">
-      {/* User Info */}
       <Card className="p-6">
         <div className="flex items-center space-x-4">
           <Avatar className="w-16 h-16">
             <AvatarImage src="https://images.unsplash.com/photo-1494790108755-2616b612b4c0?w=150&h=150&fit=crop&crop=face" />
-            <AvatarFallback>JD</AvatarFallback>
+            <AvatarFallback>{user?.fullName?.charAt(0) || "U"}</AvatarFallback>
           </Avatar>
           <div>
-            <h2 className="text-xl font-bold">Name</h2>
-            <p className="text-gray-600">Position/Post</p>
+            <h2 className="text-xl font-bold">{user?.fullName || "User"}</h2>
+            <p className="text-gray-600">{user?.email}</p>
           </div>
         </div>
       </Card>
 
-      {/* Balances */}
-      <div className="space-y-4">
-        <Card className="p-4">
-          <h3 className="font-semibold text-gray-700">Personal Balance</h3>
-          <p className="text-2xl font-bold">₦100,000</p>
-        </Card>
-        
-        <Card className="p-4">
-          <h3 className="font-semibold text-gray-700">Group's Balance</h3>
-          <p className="text-2xl font-bold">₦150,000</p>
-        </Card>
-        
-        <Card className="p-4">
-          <h3 className="font-semibold text-gray-700">Total Balance</h3>
-          <p className="text-2xl font-bold">₦250,000</p>
-        </Card>
-      </div>
+      <Card className="p-4">
+        <h3 className="font-semibold text-gray-700">Personal Balance</h3>
+        <p className="text-2xl font-bold">{currencySymbol}{userBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+      </Card>
 
-      {/* Administered Groups */}
-      <div>
-        <h3 className="font-semibold mb-4">Administered Groups</h3>
-        <div className="space-y-3">
-          {administeredGroups.map((group) => (
-            <Card key={group.id} className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
-                  <span className="font-medium">{group.name}</span>
-                </div>
-                <span className="font-semibold">₦{group.balance.toLocaleString()}</span>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
+      <Button 
+        onClick={handleLogout}
+        variant="outline" 
+        className="w-full border-red-500 text-red-500 hover:bg-red-50"
+      >
+        Sign Out
+      </Button>
     </div>
   );
 
@@ -595,40 +488,6 @@ const Index = () => {
         return renderMainContent();
     }
   };
-
-  const projects = [
-    {
-      id: 1,
-      title: "Project Alpha",
-      members: 12,
-      date: "Mar 22, 2025",
-      description: "This is the reason for the contribution. Watch, read, or listen to the story behind the request.",
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b4c0?w=150&h=150&fit=crop&crop=face",
-      balance: 25000
-    },
-    {
-      id: 2,
-      title: "Project Beta",
-      members: 8,
-      date: "Mar 20, 2025",
-      description: "Another project seeking support for important initiatives.",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-      balance: 18500
-    }
-  ];
-
-  const transactions = [
-    { id: 1, sender: "Ushericria", amount: 100, time: "12 pm", balance: 25000 },
-    { id: 2, sender: "Emeka", amount: 300, time: "11:30", balance: 0 },
-    { id: 3, sender: "Highchief", amount: 1050, time: "Yesterday", balance: 0 },
-    { id: 4, sender: "Brother", amount: 10000, time: "2 weeks", balance: 0 }
-  ];
-
-  const administeredGroups = [
-    { id: 1, name: "Project Alpha", balance: 25000 },
-    { id: 2, name: "Project Beta", balance: 18500 },
-    { id: 3, name: "Project Gamma", balance: 32000 }
-  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
