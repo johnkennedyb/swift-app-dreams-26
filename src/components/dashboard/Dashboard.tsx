@@ -262,7 +262,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
       case "projects":
         return <ProjectsPage />;
       case "profile":
-        return <ProfilePage user={user} onSignOut={onSignOut} />;
+        return <ProfilePage user={user} wallet={wallet} onSignOut={onSignOut} />;
       default:
         return renderHomeTab();
     }
