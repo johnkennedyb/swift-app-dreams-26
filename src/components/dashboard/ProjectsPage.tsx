@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Plus, 
   Users, 
@@ -12,75 +16,158 @@ import {
   Calendar,
   TrendingUp,
   Filter,
-  Search
+  Search,
+  Loader2
 } from "lucide-react";
+import { useProjects } from "@/hooks/useProjects";
+import { useTransactions } from "@/hooks/useTransactions";
 
 const ProjectsPage = () => {
+  const { projects, loading: projectsLoading, createProject, joinProject } = useProjects();
+  const { transactions, loading: transactionsLoading } = useTransactions();
+  const { toast } = useToast();
+  
   const [activeFilter, setActiveFilter] = useState("all");
-  const [inputAmount, setInputAmount] = useState("");
-  const [inputPin, setInputPin] = useState("");
-
-  const projects = [
-    {
-      id: 1,
-      name: "Project Alpha",
-      adminProfile: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-      currentBalance: 25000,
-      totalMembers: 12,
-      status: "active",
-      type: "credit",
-      lastActivity: "2 hours ago",
-      fundingGoal: 50000,
-      progress: 50
-    },
-    {
-      id: 2,
-      name: "Emergency Fund",
-      adminProfile: "https://images.unsplash.com/photo-1494790108755-2616b612b4c0?w=150&h=150&fit=crop&crop=face",
-      currentBalance: 15000,
-      totalMembers: 8,
-      status: "active",
-      type: "debit",
-      lastActivity: "1 day ago",
-      fundingGoal: 30000,
-      progress: 50
-    },
-    {
-      id: 3,
-      name: "Community Garden",
-      adminProfile: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-      currentBalance: 8500,
-      totalMembers: 15,
-      status: "completed",
-      type: "credit",
-      lastActivity: "3 days ago",
-      fundingGoal: 10000,
-      progress: 85
-    }
-  ];
-
-  const transactions = [
-    { id: 1, sender: "Uchenna", amount: 100, time: "12pm", balance: 25000 },
-    { id: 2, sender: "Emeka", amount: 300, time: "11:30", balance: 24900 },
-    { id: 3, sender: "Highchief", amount: 1500, time: "Yesterday", balance: 24600 },
-    { id: 4, sender: "Brother", amount: 10000, time: "2 weeks", balance: 23100 }
-  ];
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    funding_goal: ""
+  });
+  const [isCreating, setIsCreating] = useState(false);
 
   const filters = [
     { id: "all", label: "All" },
-    { id: "credit", label: "Credit" },
-    { id: "debit", label: "Debit" },
-    { id: "yet-to-support", label: "Yet to Support" }
+    { id: "active", label: "Active" },
+    { id: "completed", label: "Completed" },
+    { id: "my-projects", label: "My Projects" }
   ];
+
+  const filteredProjects = projects.filter(project => {
+    if (activeFilter === "all") return true;
+    if (activeFilter === "active") return project.status === "active";
+    if (activeFilter === "completed") return project.status === "completed";
+    if (activeFilter === "my-projects") return project.admin_id === projects[0]?.admin_id; // This would need proper user context
+    return true;
+  });
+
+  const totalFunded = projects.reduce((sum, project) => sum + project.current_funding, 0);
+  const activeProjectsCount = projects.filter(p => p.status === "active").length;
+
+  const handleCreateProject = async () => {
+    if (!formData.name || !formData.funding_goal) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreating(true);
+    const { error } = await createProject({
+      name: formData.name,
+      description: formData.description,
+      funding_goal: parseFloat(formData.funding_goal),
+    });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create project",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Project created successfully",
+      });
+      setShowCreateDialog(false);
+      setFormData({ name: "", description: "", funding_goal: "" });
+    }
+    setIsCreating(false);
+  };
+
+  const handleJoinProject = async (projectId: string) => {
+    const { error } = await joinProject(projectId);
+    
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to join project",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Successfully joined project",
+      });
+    }
+  };
+
+  if (projectsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
-        <Button className="bg-purple-600 hover:bg-purple-700">
-          <Plus className="w-4 h-4 mr-2" />
-          New Project
-        </Button>
+        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+          <DialogTrigger asChild>
+            <Button className="bg-purple-600 hover:bg-purple-700">
+              <Plus className="w-4 h-4 mr-2" />
+              New Project
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Project</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="name">Project Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter project name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Describe your project"
+                />
+              </div>
+              <div>
+                <Label htmlFor="funding_goal">Funding Goal (NGN)</Label>
+                <Input
+                  id="funding_goal"
+                  type="number"
+                  value={formData.funding_goal}
+                  onChange={(e) => setFormData(prev => ({ ...prev, funding_goal: e.target.value }))}
+                  placeholder="0.00"
+                />
+              </div>
+              <Button 
+                onClick={handleCreateProject} 
+                className="w-full bg-purple-600 hover:bg-purple-700"
+                disabled={isCreating}
+              >
+                {isCreating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Create Project
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Project Summary Cards */}
@@ -92,7 +179,7 @@ const ProjectsPage = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600">Total Funded</p>
-              <p className="text-xl font-bold">$48,500</p>
+              <p className="text-xl font-bold">₦{totalFunded.toLocaleString()}</p>
             </div>
           </div>
         </Card>
@@ -104,7 +191,7 @@ const ProjectsPage = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600">Active Projects</p>
-              <p className="text-xl font-bold">3</p>
+              <p className="text-xl font-bold">{activeProjectsCount}</p>
             </div>
           </div>
         </Card>
@@ -115,47 +202,12 @@ const ProjectsPage = () => {
               <TrendingUp className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Success Rate</p>
-              <p className="text-xl font-bold">85%</p>
+              <p className="text-sm text-gray-600">Total Projects</p>
+              <p className="text-xl font-bold">{projects.length}</p>
             </div>
           </div>
         </Card>
       </div>
-
-      {/* Send Money Section */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">Quick Transfer</h2>
-        <div className="space-y-4">
-          <div>
-            <Input
-              placeholder="Input Amount"
-              value={inputAmount}
-              onChange={(e) => setInputAmount(e.target.value)}
-              className="w-full"
-            />
-          </div>
-          <div>
-            <Input
-              type="password"
-              placeholder="Input Pin"
-              value={inputPin}
-              onChange={(e) => setInputPin(e.target.value)}
-              className="w-full"
-            />
-          </div>
-          <div className="flex flex-col space-y-2">
-            <Button className="bg-purple-600 hover:bg-purple-700">
-              Send from personal fund
-            </Button>
-            <Button variant="outline" className="border-purple-600 text-purple-600">
-              Send from groups fund
-            </Button>
-          </div>
-          <Button className="w-full bg-green-600 hover:bg-green-700">
-            Approve
-          </Button>
-        </div>
-      </Card>
 
       {/* Filters */}
       <div className="flex space-x-2 overflow-x-auto">
@@ -174,72 +226,123 @@ const ProjectsPage = () => {
 
       {/* Projects List */}
       <div className="space-y-4">
-        {projects
-          .filter(project => activeFilter === "all" || project.type === activeFilter || 
-                 (activeFilter === "yet-to-support" && project.status === "active"))
-          .map((project) => (
-            <Card key={project.id} className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-3">
-                  <Avatar className="w-10 h-10">
-                    <AvatarImage src={project.adminProfile} />
-                    <AvatarFallback>{project.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{project.name}</h3>
-                    <p className="text-sm text-gray-600">Current Balance: ${project.currentBalance.toLocaleString()}</p>
-                  </div>
-                </div>
-                <Badge variant={project.status === "completed" ? "default" : "secondary"}>
-                  {project.status}
-                </Badge>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-600">Total Members</p>
-                  <p className="font-semibold">{project.totalMembers}</p>
-                </div>
-                <div>
-                  <p className="text-gray-600">Progress</p>
-                  <div className="flex items-center space-x-2">
-                    <div className="flex-1 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-purple-600 h-2 rounded-full" 
-                        style={{ width: `${project.progress}%` }}
-                      ></div>
+        {filteredProjects.length === 0 ? (
+          <Card className="p-8 text-center">
+            <p className="text-gray-500">No projects found</p>
+          </Card>
+        ) : (
+          filteredProjects.map((project) => {
+            const progress = project.funding_goal > 0 ? (project.current_funding / project.funding_goal) * 100 : 0;
+            
+            return (
+              <Card key={project.id} className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="w-10 h-10">
+                      <AvatarImage src={project.profiles.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {project.profiles.first_name.charAt(0)}{project.profiles.last_name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{project.name}</h3>
+                      <p className="text-sm text-gray-600">
+                        By {project.profiles.first_name} {project.profiles.last_name}
+                      </p>
                     </div>
-                    <span className="text-xs font-medium">{project.progress}%</span>
+                  </div>
+                  <Badge variant={project.status === "completed" ? "default" : "secondary"}>
+                    {project.status}
+                  </Badge>
+                </div>
+                
+                {project.description && (
+                  <p className="text-sm text-gray-600 mb-3">{project.description}</p>
+                )}
+                
+                <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                  <div>
+                    <p className="text-gray-600">Current Funding</p>
+                    <p className="font-semibold">₦{project.current_funding.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Goal</p>
+                    <p className="font-semibold">₦{project.funding_goal.toLocaleString()}</p>
                   </div>
                 </div>
-              </div>
-            </Card>
-          ))}
+
+                <div className="mb-3">
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="text-gray-600">Progress</span>
+                    <span className="font-medium">{Math.round(progress)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-purple-600 h-2 rounded-full" 
+                      style={{ width: `${Math.min(progress, 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">
+                    {project.project_members.length} members
+                  </span>
+                  <Button 
+                    size="sm" 
+                    className="bg-purple-600 hover:bg-purple-700"
+                    onClick={() => handleJoinProject(project.id)}
+                  >
+                    Support
+                  </Button>
+                </div>
+              </Card>
+            );
+          })
+        )}
       </div>
 
       {/* Recent Transactions */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">Recent Transactions</h2>
-        <div className="space-y-3">
-          {transactions.map((transaction) => (
-            <div key={transaction.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-medium text-purple-600">{transaction.id}</span>
+      {!transactionsLoading && transactions.length > 0 && (
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">Recent Transactions</h2>
+          <div className="space-y-3">
+            {transactions.slice(0, 5).map((transaction) => (
+              <div key={transaction.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-medium text-purple-600">
+                      {transaction.type === 'credit' ? '+' : '-'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {transaction.description || 
+                       (transaction.projects?.name || 
+                        (transaction.recipient_profile ? 
+                         `${transaction.recipient_profile.first_name} ${transaction.recipient_profile.last_name}` : 
+                         'Transaction'))}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {new Date(transaction.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-gray-900">{transaction.sender}</p>
-                  <p className="text-sm text-gray-600">{transaction.time}</p>
+                <div className="text-right">
+                  <p className={`font-semibold ${
+                    transaction.type === 'credit' ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {transaction.type === 'credit' ? '+' : '-'}₦{transaction.amount.toLocaleString()}
+                  </p>
+                  <Badge variant="outline" className="text-xs">
+                    {transaction.status}
+                  </Badge>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="font-semibold text-green-600">+${transaction.amount}</p>
-                <p className="text-sm text-gray-600">${transaction.balance.toLocaleString()}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

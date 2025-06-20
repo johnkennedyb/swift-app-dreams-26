@@ -6,6 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 import { 
   MessageCircle, 
   Heart, 
@@ -13,71 +17,133 @@ import {
   Calendar,
   ArrowRight,
   Play,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Loader2,
+  ArrowLeft
 } from "lucide-react";
+import { useSupportRequests } from "@/hooks/useSupportRequests";
+import { useSupportComments } from "@/hooks/useSupportComments";
+import { useProjects } from "@/hooks/useProjects";
 
 const SupportPage = () => {
+  const { supportRequests, loading: supportLoading, createSupportRequest } = useSupportRequests();
+  const { projects, loading: projectsLoading } = useProjects();
+  const { toast } = useToast();
+  
+  const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [comment, setComment] = useState("");
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [formData, setFormData] = useState({
+    project_id: "",
+    title: "",
+    description: "",
+    amount_needed: ""
+  });
+  const [isCreating, setIsCreating] = useState(false);
 
-  const supportProjects = [
-    {
-      id: "alpha",
-      name: "Project Alpha",
-      members: 12,
-      date: "Mar 22, 2025",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-      description: "Educational initiative for underprivileged children",
-      fundingGoal: 50000,
-      currentFunding: 32500
-    },
-    {
-      id: "beta",
-      name: "Project Beta",
-      members: 8,
-      date: "Mar 20, 2025",
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b4c0?w=150&h=150&fit=crop&crop=face",
-      description: "Clean water access for rural communities",
-      fundingGoal: 75000,
-      currentFunding: 45000
-    },
-  ];
+  const { comments, loading: commentsLoading, addComment } = useSupportComments(selectedRequest);
 
-  const recentSupport = [
-    {
-      id: 1,
-      project: "Project Alpha",
-      amount: 250,
-      date: "2 hours ago",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"
+  const selectedSupportRequest = supportRequests.find(req => req.id === selectedRequest);
+
+  const handleCreateRequest = async () => {
+    if (!formData.project_id || !formData.title || !formData.description || !formData.amount_needed) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
     }
-  ];
 
-  const renderProjectDetail = (project: any) => (
+    setIsCreating(true);
+    const { error } = await createSupportRequest({
+      project_id: formData.project_id,
+      title: formData.title,
+      description: formData.description,
+      amount_needed: parseFloat(formData.amount_needed),
+    });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create support request",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Support request created successfully",
+      });
+      setShowCreateDialog(false);
+      setFormData({ project_id: "", title: "", description: "", amount_needed: "" });
+    }
+    setIsCreating(false);
+  };
+
+  const handleAddComment = async () => {
+    if (!comment.trim()) return;
+
+    const { error } = await addComment(comment);
+    
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add comment",
+        variant: "destructive",
+      });
+    } else {
+      setComment("");
+      toast({
+        title: "Success",
+        description: "Comment added successfully",
+      });
+    }
+  };
+
+  const renderProjectDetail = (request: any) => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => setSelectedProject(null)}>
-          ← Back
+        <Button variant="ghost" onClick={() => setSelectedRequest(null)}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
         </Button>
-        <h1 className="text-xl font-bold text-purple-600">{project.name}</h1>
+        <h1 className="text-xl font-bold text-purple-600">{request.title}</h1>
         <div></div>
       </div>
 
       <Card className="p-6">
-        <div className="bg-gray-100 rounded-lg p-8 mb-6 flex items-center justify-center">
-          <div className="text-center text-gray-500">
-            <ImageIcon className="w-12 h-12 mx-auto mb-2" />
-            <p className="text-sm">[Video, Audio or Image Here]</p>
+        <div className="flex items-center space-x-3 mb-4">
+          <Avatar className="w-12 h-12">
+            <AvatarImage src={request.profiles.avatar_url || undefined} />
+            <AvatarFallback>
+              {request.profiles.first_name.charAt(0)}{request.profiles.last_name.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h3 className="font-semibold">
+              {request.profiles.first_name} {request.profiles.last_name}
+            </h3>
+            <p className="text-sm text-gray-600">{request.projects.name}</p>
           </div>
         </div>
 
-        <p className="text-gray-700 mb-6">
-          This is the reason for the contribution. Watch, read, or listen to the story behind the request.
-        </p>
+        <div className="bg-gray-100 rounded-lg p-8 mb-6 flex items-center justify-center">
+          <div className="text-center text-gray-500">
+            <ImageIcon className="w-12 h-12 mx-auto mb-2" />
+            <p className="text-sm">Media content would appear here</p>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <h4 className="font-semibold mb-2">Amount Needed</h4>
+          <p className="text-2xl font-bold text-purple-600">₦{request.amount_needed.toLocaleString()}</p>
+        </div>
+
+        <p className="text-gray-700 mb-6">{request.description}</p>
 
         <div className="flex flex-wrap gap-3 mb-6">
           <Button className="bg-purple-600 hover:bg-purple-700 flex-1">
-            Support
+            Support ₦{request.amount_needed.toLocaleString()}
           </Button>
           <Button variant="outline" className="flex-1">
             Decline
@@ -89,14 +155,50 @@ const SupportPage = () => {
 
         <div className="space-y-4">
           <h3 className="font-semibold text-gray-900">Comments</h3>
+          
+          {commentsLoading ? (
+            <div className="flex justify-center">
+              <Loader2 className="w-6 h-6 animate-spin" />
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {comments.map((comment) => (
+                <div key={comment.id} className="flex space-x-3">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={comment.profiles.avatar_url || undefined} />
+                    <AvatarFallback>
+                      {comment.profiles.first_name.charAt(0)}{comment.profiles.last_name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="bg-gray-100 rounded-lg p-3">
+                      <p className="text-sm font-medium">
+                        {comment.profiles.first_name} {comment.profiles.last_name}
+                      </p>
+                      <p className="text-sm">{comment.comment}</p>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(comment.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
           <div className="flex gap-3">
             <Input
               placeholder="Add a comment..."
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               className="flex-1"
+              onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
             />
-            <Button className="bg-purple-600 hover:bg-purple-700">
+            <Button 
+              className="bg-purple-600 hover:bg-purple-700"
+              onClick={handleAddComment}
+              disabled={!comment.trim()}
+            >
               Send
             </Button>
           </div>
@@ -105,76 +207,131 @@ const SupportPage = () => {
     </div>
   );
 
-  if (selectedProject) {
-    const project = supportProjects.find(p => p.id === selectedProject);
-    return project ? renderProjectDetail(project) : null;
+  if (selectedRequest && selectedSupportRequest) {
+    return renderProjectDetail(selectedSupportRequest);
+  }
+
+  if (supportLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Support Projects</h1>
-        <Button className="bg-purple-600 hover:bg-purple-700">
-          Ask for Support
-        </Button>
-      </div>
-
-      {/* Available Projects */}
-      <div className="space-y-4">
-        {supportProjects.map((project) => (
-          <Card key={project.id} className="p-4 cursor-pointer hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Avatar className="w-12 h-12">
-                  <AvatarImage src={project.avatar} />
-                  <AvatarFallback>{project.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{project.name}</h3>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600">
-                    <span className="flex items-center">
-                      <Users className="w-4 h-4 mr-1" />
-                      Members: {project.members}
-                    </span>
-                    <span className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-1" />
-                      {project.date}
-                    </span>
-                  </div>
-                </div>
+        <h1 className="text-2xl font-bold text-gray-900">Support Requests</h1>
+        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+          <DialogTrigger asChild>
+            <Button className="bg-purple-600 hover:bg-purple-700">
+              Ask for Support
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Support Request</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="project_id">Project</Label>
+                <Select value={formData.project_id} onValueChange={(value) => 
+                  setFormData(prev => ({ ...prev, project_id: value }))
+                }>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="title">Title</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="Support request title"
+                />
+              </div>
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Describe what you need support for"
+                />
+              </div>
+              <div>
+                <Label htmlFor="amount_needed">Amount Needed (NGN)</Label>
+                <Input
+                  id="amount_needed"
+                  type="number"
+                  value={formData.amount_needed}
+                  onChange={(e) => setFormData(prev => ({ ...prev, amount_needed: e.target.value }))}
+                  placeholder="0.00"
+                />
               </div>
               <Button 
-                className="bg-purple-600 hover:bg-purple-700"
-                onClick={() => setSelectedProject(project.id)}
+                onClick={handleCreateRequest} 
+                className="w-full bg-purple-600 hover:bg-purple-700"
+                disabled={isCreating}
               >
-                Support
+                {isCreating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Create Request
               </Button>
             </div>
-          </Card>
-        ))}
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Recent Support */}
+      {/* Available Support Requests */}
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Your most recent support</h2>
-        {recentSupport.map((support) => (
-          <Card key={support.id} className="p-6">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <Avatar className="w-20 h-20">
-                <AvatarImage src={support.avatar} />
-                <AvatarFallback>PA</AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-semibold text-gray-900">Supported {support.project}</h3>
-                <p className="text-gray-600">${support.amount} • {support.date}</p>
-              </div>
-              <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-              </div>
-            </div>
+        {supportRequests.length === 0 ? (
+          <Card className="p-8 text-center">
+            <p className="text-gray-500">No support requests found</p>
           </Card>
-        ))}
+        ) : (
+          supportRequests.map((request) => (
+            <Card key={request.id} className="p-4 cursor-pointer hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={request.profiles.avatar_url || undefined} />
+                    <AvatarFallback>
+                      {request.profiles.first_name.charAt(0)}{request.profiles.last_name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{request.title}</h3>
+                    <p className="text-sm text-gray-600">
+                      By {request.profiles.first_name} {request.profiles.last_name}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Project: {request.projects.name}
+                    </p>
+                    <p className="text-lg font-bold text-purple-600 mt-1">
+                      ₦{request.amount_needed.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  className="bg-purple-600 hover:bg-purple-700"
+                  onClick={() => setSelectedRequest(request.id)}
+                >
+                  View Details
+                </Button>
+              </div>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );

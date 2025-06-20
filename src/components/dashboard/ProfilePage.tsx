@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import { 
   User, 
   Mail, 
@@ -19,43 +20,100 @@ import {
   Camera,
   Settings,
   Lock,
-  Smartphone
+  Smartphone,
+  Loader2
 } from "lucide-react";
 
+import { Profile } from "@/hooks/useProfile";
+import { Wallet } from "@/hooks/useWallet";
+import { useProfile } from "@/hooks/useProfile";
+import { useTransactions } from "@/hooks/useTransactions";
+import { useProjects } from "@/hooks/useProjects";
+
 interface ProfilePageProps {
-  user: any;
+  user: Profile;
+  wallet: Wallet;
   onSignOut: () => void;
 }
 
-const ProfilePage = ({ user, onSignOut }: ProfilePageProps) => {
+const ProfilePage = ({ user, wallet, onSignOut }: ProfilePageProps) => {
+  const { updateProfile } = useProfile();
+  const { transactions } = useTransactions();
+  const { projects } = useProjects();
+  const { toast } = useToast();
+  
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [profileData, setProfileData] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: user?.email || "john@example.com",
-    phone: "+1 (555) 123-4567",
-    address: "123 Main St, New York, NY 10001",
-    dateOfBirth: "1990-01-15"
+    firstName: user.first_name || "",
+    lastName: user.last_name || "",
+    phone: user.phone || "",
+    address: user.address || "",
+    dateOfBirth: user.date_of_birth || ""
   });
 
+  // Calculate user statistics from real data
+  const userTransactions = transactions.filter(t => t.user_id === user.id);
+  const totalSupported = userTransactions
+    .filter(t => t.type === 'debit' && t.status === 'completed')
+    .reduce((sum, t) => sum + t.amount, 0);
+  
+  const projectsSupported = new Set(
+    userTransactions
+      .filter(t => t.project_id && t.type === 'debit')
+      .map(t => t.project_id)
+  ).size;
+  
+  const projectsCreated = projects.filter(p => p.admin_id === user.id).length;
+  
+  const completedTransactions = userTransactions.filter(t => t.status === 'completed').length;
+  const totalTransactions = userTransactions.length;
+  const successRate = totalTransactions > 0 ? Math.round((completedTransactions / totalTransactions) * 100) : 0;
+
   const userStats = {
-    totalSupported: 15420,
-    projectsSupported: 8,
-    projectsCreated: 3,
-    successRate: 95,
-    memberSince: "January 2023"
+    totalSupported,
+    projectsSupported,
+    projectsCreated,
+    successRate,
+    memberSince: new Date(user.created_at).toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long' 
+    })
   };
 
   const securitySettings = [
-    { id: "2fa", label: "Two-Factor Authentication", enabled: true },
+    { id: "2fa", label: "Two-Factor Authentication", enabled: false },
     { id: "biometric", label: "Biometric Login", enabled: false },
     { id: "notifications", label: "Push Notifications", enabled: true },
     { id: "email-alerts", label: "Email Alerts", enabled: true }
   ];
 
-  const handleSave = () => {
-    setIsEditing(false);
-    // Here you would typically save to backend
+  const handleSave = async () => {
+    setIsSaving(true);
+    
+    const { error } = await updateProfile({
+      first_name: profileData.firstName,
+      last_name: profileData.lastName,
+      phone: profileData.phone,
+      address: profileData.address,
+      date_of_birth: profileData.dateOfBirth
+    });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update profile",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      });
+      setIsEditing(false);
+    }
+    
+    setIsSaving(false);
   };
 
   return (
@@ -73,19 +131,33 @@ const ProfilePage = ({ user, onSignOut }: ProfilePageProps) => {
         <div className="flex flex-col items-center text-center space-y-4">
           <div className="relative">
             <Avatar className="w-24 h-24">
-              <AvatarImage src="https://images.unsplash.com/photo-1494790108755-2616b612b4c0?w=150&h=150&fit=crop&crop=face" />
-              <AvatarFallback className="text-2xl">JD</AvatarFallback>
+              <AvatarImage src={user.avatar_url || undefined} />
+              <AvatarFallback className="text-2xl">
+                {user.first_name?.charAt(0)}{user.last_name?.charAt(0)}
+              </AvatarFallback>
             </Avatar>
             <Button size="icon" className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-purple-600 hover:bg-purple-700">
               <Camera className="w-4 h-4" />
             </Button>
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">{profileData.firstName} {profileData.lastName}</h2>
-            <p className="text-gray-600">{profileData.email}</p>
+            <h2 className="text-xl font-bold text-gray-900">
+              {user.first_name} {user.last_name}
+            </h2>
+            <p className="text-gray-600">ID: {user.id.substring(0, 8)}...</p>
             <Badge variant="outline" className="mt-2">
               Verified Member
             </Badge>
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-center">
+            <div>
+              <p className="text-lg font-bold text-purple-600">₦{wallet.balance.toLocaleString()}</p>
+              <p className="text-sm text-gray-600">Wallet Balance</p>
+            </div>
+            <div>
+              <p className="text-lg font-bold text-green-600">{userTransactions.length}</p>
+              <p className="text-sm text-gray-600">Total Transactions</p>
+            </div>
           </div>
         </div>
       </Card>
@@ -95,7 +167,7 @@ const ProfilePage = ({ user, onSignOut }: ProfilePageProps) => {
         <h3 className="text-lg font-semibold mb-4">Your Impact</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center">
-            <p className="text-2xl font-bold text-purple-600">${userStats.totalSupported.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-purple-600">₦{userStats.totalSupported.toLocaleString()}</p>
             <p className="text-sm text-gray-600">Total Supported</p>
           </div>
           <div className="text-center">
@@ -121,6 +193,7 @@ const ProfilePage = ({ user, onSignOut }: ProfilePageProps) => {
             variant="outline"
             size="sm"
             onClick={() => setIsEditing(!isEditing)}
+            disabled={isSaving}
           >
             <Edit3 className="w-4 h-4 mr-2" />
             {isEditing ? "Cancel" : "Edit"}
@@ -148,20 +221,12 @@ const ProfilePage = ({ user, onSignOut }: ProfilePageProps) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-            <Input
-              value={profileData.email}
-              onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
-              disabled={!isEditing}
-            />
-          </div>
-
-          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
             <Input
               value={profileData.phone}
               onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
               disabled={!isEditing}
+              placeholder="Enter phone number"
             />
           </div>
 
@@ -171,15 +236,31 @@ const ProfilePage = ({ user, onSignOut }: ProfilePageProps) => {
               value={profileData.address}
               onChange={(e) => setProfileData(prev => ({ ...prev, address: e.target.value }))}
               disabled={!isEditing}
+              placeholder="Enter address"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+            <Input
+              type="date"
+              value={profileData.dateOfBirth}
+              onChange={(e) => setProfileData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+              disabled={!isEditing}
             />
           </div>
 
           {isEditing && (
             <div className="flex space-x-3">
-              <Button onClick={handleSave} className="bg-purple-600 hover:bg-purple-700">
+              <Button 
+                onClick={handleSave} 
+                className="bg-purple-600 hover:bg-purple-700"
+                disabled={isSaving}
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Save Changes
               </Button>
-              <Button variant="outline" onClick={() => setIsEditing(false)}>
+              <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSaving}>
                 Cancel
               </Button>
             </div>
@@ -207,29 +288,6 @@ const ProfilePage = ({ user, onSignOut }: ProfilePageProps) => {
               </Badge>
             </div>
           ))}
-        </div>
-      </Card>
-
-      {/* Account Actions */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Account Actions</h3>
-        <div className="space-y-3">
-          <Button variant="outline" className="w-full justify-start">
-            <Lock className="w-4 h-4 mr-3" />
-            Change Password
-          </Button>
-          <Button variant="outline" className="w-full justify-start">
-            <CreditCard className="w-4 h-4 mr-3" />
-            Payment Methods
-          </Button>
-          <Button variant="outline" className="w-full justify-start">
-            <Settings className="w-4 h-4 mr-3" />
-            App Preferences
-          </Button>
-          <Button variant="outline" className="w-full justify-start text-red-600 border-red-600">
-            <LogOut className="w-4 h-4 mr-3" />
-            Delete Account
-          </Button>
         </div>
       </Card>
 
