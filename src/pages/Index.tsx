@@ -1,11 +1,10 @@
 
 import { useState } from "react";
-import Landing from "./Landing";
 import Auth from "./Auth";
 import Dashboard from "../components/dashboard/Dashboard";
 
 const Index = () => {
-  const [currentView, setCurrentView] = useState<"landing" | "signin" | "signup" | "dashboard">("landing");
+  const [currentView, setCurrentView] = useState<"signin" | "signup" | "dashboard">("signin");
   const [user, setUser] = useState(null);
 
   const handleAuthSuccess = () => {
@@ -15,45 +14,27 @@ const Index = () => {
 
   const handleSignOut = () => {
     setUser(null);
-    setCurrentView("landing");
+    setCurrentView("signin");
   };
 
-  if (currentView === "landing") {
-    return (
-      <div>
-        <Landing />
-        <div className="fixed bottom-4 right-4 flex gap-2">
-          <button 
-            onClick={() => setCurrentView("signin")}
-            className="bg-white text-purple-600 px-4 py-2 rounded-lg shadow-lg hover:shadow-xl transition-shadow"
-          >
-            Sign In
-          </button>
-          <button 
-            onClick={() => setCurrentView("signup")}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg shadow-lg hover:shadow-xl transition-shadow"
-          >
-            Sign Up
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const toggleAuthMode = () => {
+    setCurrentView(currentView === "signin" ? "signup" : "signin");
+  };
 
-  if (currentView === "signin" || currentView === "signup") {
+  if (currentView === "dashboard") {
     return (
-      <Auth 
-        mode={currentView}
-        onBack={() => setCurrentView("landing")}
-        onSuccess={handleAuthSuccess}
+      <Dashboard 
+        user={user}
+        onSignOut={handleSignOut}
       />
     );
   }
 
   return (
-    <Dashboard 
-      user={user}
-      onSignOut={handleSignOut}
+    <Auth 
+      mode={currentView}
+      onSuccess={handleAuthSuccess}
+      onToggleMode={toggleAuthMode}
     />
   );
 };
