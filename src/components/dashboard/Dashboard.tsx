@@ -24,8 +24,13 @@ import {
   Shield,
   Globe,
   LogOut,
-  Menu
+  Menu,
+  Heart
 } from "lucide-react";
+
+import SupportPage from "./SupportPage";
+import ProjectsPage from "./ProjectsPage";
+import ProfilePage from "./ProfilePage";
 
 interface DashboardProps {
   user: any;
@@ -253,36 +258,12 @@ const Dashboard = ({ user, onSignOut }: DashboardProps) => {
     switch (activeTab) {
       case "home":
         return renderHomeTab();
+      case "support":
+        return <SupportPage />;
+      case "projects":
+        return <ProjectsPage />;
       case "profile":
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold">Profile</h1>
-              <Button variant="outline" onClick={onSignOut} className="text-red-600 border-red-600">
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
-            <Card className="p-6">
-              <div className="flex items-center space-x-4 mb-6">
-                <Avatar className="w-16 h-16">
-                  <AvatarImage src="https://images.unsplash.com/photo-1494790108755-2616b612b4c0?w=150&h=150&fit=crop&crop=face" />
-                  <AvatarFallback>JD</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h2 className="text-xl font-bold">{user?.name}</h2>
-                  <p className="text-gray-600">{user?.email}</p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <Card className="p-4">
-                  <h3 className="font-semibold text-gray-700">Account Balance</h3>
-                  <p className="text-2xl font-bold">{currencySymbol}{userBalance.toLocaleString()}</p>
-                </Card>
-              </div>
-            </Card>
-          </div>
-        );
+        return <ProfilePage user={user} onSignOut={onSignOut} />;
       default:
         return renderHomeTab();
     }
@@ -331,7 +312,7 @@ const Dashboard = ({ user, onSignOut }: DashboardProps) => {
           <div className="flex justify-around">
             {[
               { id: "home", icon: Home, label: "Home" },
-              { id: "support", icon: User, label: "Support" },
+              { id: "support", icon: Heart, label: "Support" },
               { id: "projects", icon: Settings, label: "Projects" },
               { id: "profile", icon: User, label: "Profile" },
             ].map((tab) => (
