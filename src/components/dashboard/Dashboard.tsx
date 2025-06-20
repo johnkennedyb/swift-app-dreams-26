@@ -1,0 +1,360 @@
+
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { 
+  Home, 
+  User, 
+  Settings, 
+  Bell, 
+  ArrowLeft,
+  MessageCircle,
+  Send,
+  CheckCircle,
+  Plus,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Eye,
+  EyeOff,
+  CreditCard,
+  TrendingUp,
+  Shield,
+  Globe,
+  LogOut,
+  Menu
+} from "lucide-react";
+
+interface DashboardProps {
+  user: any;
+  onSignOut: () => void;
+}
+
+const Dashboard = ({ user, onSignOut }: DashboardProps) => {
+  const [activeTab, setActiveTab] = useState("home");
+  const [currentView, setCurrentView] = useState("main");
+  const [showBalance, setShowBalance] = useState(true);
+  const [sendAmount, setSendAmount] = useState("");
+  const [recipientId, setRecipientId] = useState("");
+
+  const userBalance = 45750.80;
+  const currency = "USD";
+  const currencySymbol = "$";
+
+  const recentTransactions = [
+    { id: 1, type: "sent", recipient: "Project Alpha", amount: 250, time: "2 hours ago", status: "completed" },
+    { id: 2, type: "received", sender: "Sarah Johnson", amount: 100, time: "5 hours ago", status: "completed" },
+    { id: 3, type: "sent", recipient: "Emergency Fund", amount: 500, time: "Yesterday", status: "completed" },
+    { id: 4, type: "received", sender: "Community Pool", amount: 1000, time: "2 days ago", status: "completed" },
+  ];
+
+  const quickActions = [
+    { id: 1, title: "Send Money", icon: ArrowUpRight, action: () => setCurrentView("send-money") },
+    { id: 2, title: "Request Support", icon: ArrowDownLeft, action: () => setCurrentView("request-support") },
+    { id: 3, title: "Add Funds", icon: Plus, action: () => {} },
+    { id: 4, title: "Cards", icon: CreditCard, action: () => {} },
+  ];
+
+  const renderHomeTab = () => (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Good morning</h1>
+          <p className="text-gray-600">Ready to support today?</p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <Button variant="ghost" size="icon" className="relative">
+            <Bell className="w-5 h-5" />
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+          </Button>
+          <Avatar className="w-10 h-10">
+            <AvatarImage src="https://images.unsplash.com/photo-1494790108755-2616b612b4c0?w=150&h=150&fit=crop&crop=face" />
+            <AvatarFallback>JD</AvatarFallback>
+          </Avatar>
+        </div>
+      </div>
+
+      {/* Balance Card */}
+      <Card className="bg-gradient-to-br from-purple-600 to-purple-700 text-white border-0">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <Shield className="w-5 h-5" />
+              <span className="text-sm opacity-90">Available Balance</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/20"
+              onClick={() => setShowBalance(!showBalance)}
+            >
+              {showBalance ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            </Button>
+          </div>
+          <div className="mb-4">
+            <p className="text-3xl font-bold">
+              {showBalance ? `${currencySymbol}${userBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : "••••••"}
+            </p>
+            <p className="text-sm opacity-90">{currency}</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-1">
+              <TrendingUp className="w-4 h-4" />
+              <span className="text-sm">+2.5% this month</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Globe className="w-4 h-4" />
+              <span className="text-sm">Global</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Actions */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Quick Actions</h2>
+        <div className="grid grid-cols-2 gap-3">
+          {quickActions.map((action) => (
+            <Card key={action.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={action.action}>
+              <CardContent className="p-4 text-center">
+                <action.icon className="w-8 h-8 mx-auto mb-2 text-purple-600" />
+                <p className="text-sm font-medium">{action.title}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Transactions */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">Recent Activity</h2>
+          <Button variant="ghost" size="sm" className="text-purple-600">
+            View All
+          </Button>
+        </div>
+        <div className="space-y-3">
+          {recentTransactions.map((transaction) => (
+            <Card key={transaction.id} className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    transaction.type === 'sent' ? 'bg-red-100' : 'bg-green-100'
+                  }`}>
+                    {transaction.type === 'sent' ? 
+                      <ArrowUpRight className="w-5 h-5 text-red-600" /> : 
+                      <ArrowDownLeft className="w-5 h-5 text-green-600" />
+                    }
+                  </div>
+                  <div>
+                    <p className="font-medium">
+                      {transaction.type === 'sent' ? transaction.recipient : transaction.sender}
+                    </p>
+                    <p className="text-sm text-gray-600">{transaction.time}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className={`font-semibold ${
+                    transaction.type === 'sent' ? 'text-red-600' : 'text-green-600'
+                  }`}>
+                    {transaction.type === 'sent' ? '-' : '+'}{currencySymbol}{transaction.amount}
+                  </p>
+                  <Badge variant="outline" className="text-xs">
+                    {transaction.status}
+                  </Badge>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSendMoneyFlow = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="icon" onClick={() => setCurrentView("main")}>
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <h1 className="text-xl font-bold">Send Money</h1>
+        <div></div>
+      </div>
+
+      <Card className="p-6">
+        <div className="text-center mb-6">
+          <p className="text-sm text-gray-600 mb-2">Available Balance</p>
+          <p className="text-2xl font-bold">{currencySymbol}{userBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Recipient ID or Email</label>
+            <Input
+              placeholder="Enter recipient details"
+              value={recipientId}
+              onChange={(e) => setRecipientId(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Amount</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                {currencySymbol}
+              </span>
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={sendAmount}
+                onChange={(e) => setSendAmount(e.target.value)}
+                className="pl-8 text-lg"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Purpose</label>
+            <Input placeholder="What's this for?" />
+          </div>
+        </div>
+      </Card>
+
+      <Button 
+        className="w-full bg-purple-600 hover:bg-purple-700 p-4 text-lg"
+        onClick={() => setCurrentView("confirmation")}
+      >
+        Send {currencySymbol}{sendAmount || "0.00"}
+      </Button>
+    </div>
+  );
+
+  const renderConfirmation = () => (
+    <div className="flex flex-col items-center justify-center h-full space-y-8 py-20">
+      <CheckCircle className="w-24 h-24 text-green-500" />
+      <h1 className="text-3xl font-bold text-gray-800">Transaction Successful</h1>
+      <p className="text-gray-600 text-center">Your money has been sent successfully</p>
+      <Button 
+        className="bg-purple-600 hover:bg-purple-700 px-8"
+        onClick={() => {
+          setCurrentView("main");
+          setActiveTab("home");
+        }}
+      >
+        Back to Home
+      </Button>
+    </div>
+  );
+
+  const renderMainContent = () => {
+    switch (activeTab) {
+      case "home":
+        return renderHomeTab();
+      case "profile":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold">Profile</h1>
+              <Button variant="outline" onClick={onSignOut} className="text-red-600 border-red-600">
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
+            <Card className="p-6">
+              <div className="flex items-center space-x-4 mb-6">
+                <Avatar className="w-16 h-16">
+                  <AvatarImage src="https://images.unsplash.com/photo-1494790108755-2616b612b4c0?w=150&h=150&fit=crop&crop=face" />
+                  <AvatarFallback>JD</AvatarFallback>
+                </Avatar>
+                <div>
+                  <h2 className="text-xl font-bold">{user?.name}</h2>
+                  <p className="text-gray-600">{user?.email}</p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <Card className="p-4">
+                  <h3 className="font-semibold text-gray-700">Account Balance</h3>
+                  <p className="text-2xl font-bold">{currencySymbol}{userBalance.toLocaleString()}</p>
+                </Card>
+              </div>
+            </Card>
+          </div>
+        );
+      default:
+        return renderHomeTab();
+    }
+  };
+
+  const renderContent = () => {
+    switch (currentView) {
+      case "send-money":
+        return renderSendMoneyFlow();
+      case "confirmation":
+        return renderConfirmation();
+      default:
+        return renderMainContent();
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Header */}
+      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">A</span>
+          </div>
+          <span className="text-gray-900 text-lg font-bold">AppBacus</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button variant="ghost" size="icon">
+            <Bell className="w-5 h-5" />
+          </Button>
+          <Avatar className="w-8 h-8">
+            <AvatarImage src="https://images.unsplash.com/photo-1494790108755-2616b612b4c0?w=150&h=150&fit=crop&crop=face" />
+            <AvatarFallback>JD</AvatarFallback>
+          </Avatar>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="pb-20 px-4 pt-6">
+        {renderContent()}
+      </div>
+
+      {/* Bottom Navigation */}
+      {currentView === "main" && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
+          <div className="flex justify-around">
+            {[
+              { id: "home", icon: Home, label: "Home" },
+              { id: "support", icon: User, label: "Support" },
+              { id: "projects", icon: Settings, label: "Projects" },
+              { id: "profile", icon: User, label: "Profile" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex flex-col items-center py-2 px-3 rounded-lg transition-all duration-200 ${
+                  activeTab === tab.id
+                    ? "bg-purple-50 text-purple-600"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <tab.icon className={`w-5 h-5 mb-1 ${
+                  activeTab === tab.id ? "text-purple-600" : ""
+                }`} />
+                <span className="text-xs font-medium">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Dashboard;
