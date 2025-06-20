@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +11,6 @@ import {
   Settings, 
   Bell, 
   ArrowLeft,
-  MessageCircle,
-  Send,
   CheckCircle,
   Plus,
   ArrowUpRight,
@@ -23,30 +21,31 @@ import {
   TrendingUp,
   Shield,
   Globe,
-  LogOut,
-  Menu,
   Heart
 } from "lucide-react";
 
 import SupportPage from "./SupportPage";
 import ProjectsPage from "./ProjectsPage";
 import ProfilePage from "./ProfilePage";
+import { Profile } from "@/hooks/useProfile";
+import { Wallet } from "@/hooks/useWallet";
 
 interface DashboardProps {
-  user: any;
+  user: Profile;
+  wallet: Wallet;
   onSignOut: () => void;
 }
 
-const Dashboard = ({ user, onSignOut }: DashboardProps) => {
+const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
   const [activeTab, setActiveTab] = useState("home");
   const [currentView, setCurrentView] = useState("main");
   const [showBalance, setShowBalance] = useState(true);
   const [sendAmount, setSendAmount] = useState("");
   const [recipientId, setRecipientId] = useState("");
 
-  const userBalance = 45750.80;
-  const currency = "USD";
-  const currencySymbol = "$";
+  const userBalance = wallet.balance;
+  const currency = wallet.currency;
+  const currencySymbol = currency === "NGN" ? "₦" : "$";
 
   const recentTransactions = [
     { id: 1, type: "sent", recipient: "Project Alpha", amount: 250, time: "2 hours ago", status: "completed" },
@@ -58,7 +57,7 @@ const Dashboard = ({ user, onSignOut }: DashboardProps) => {
   const quickActions = [
     { id: 1, title: "Send Money", icon: ArrowUpRight, action: () => setCurrentView("send-money") },
     { id: 2, title: "Request Support", icon: ArrowDownLeft, action: () => setCurrentView("request-support") },
-    { id: 3, title: "Add Funds", icon: Plus, action: () => {} },
+    { id: 3, title: "Add Funds", icon: Plus, action: () => setCurrentView("add-funds") },
     { id: 4, title: "Cards", icon: CreditCard, action: () => {} },
   ];
 
@@ -67,7 +66,7 @@ const Dashboard = ({ user, onSignOut }: DashboardProps) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Good morning</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Good morning, {user.first_name}</h1>
           <p className="text-gray-600">Ready to support today?</p>
         </div>
         <div className="flex items-center space-x-3">
@@ -76,8 +75,8 @@ const Dashboard = ({ user, onSignOut }: DashboardProps) => {
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
           </Button>
           <Avatar className="w-10 h-10">
-            <AvatarImage src="https://images.unsplash.com/photo-1494790108755-2616b612b4c0?w=150&h=150&fit=crop&crop=face" />
-            <AvatarFallback>JD</AvatarFallback>
+            <AvatarImage src={user.avatar_url} />
+            <AvatarFallback>{user.first_name?.charAt(0)}{user.last_name?.charAt(0)}</AvatarFallback>
           </Avatar>
         </div>
       </div>
@@ -295,8 +294,8 @@ const Dashboard = ({ user, onSignOut }: DashboardProps) => {
             <Bell className="w-5 h-5" />
           </Button>
           <Avatar className="w-8 h-8">
-            <AvatarImage src="https://images.unsplash.com/photo-1494790108755-2616b612b4c0?w=150&h=150&fit=crop&crop=face" />
-            <AvatarFallback>JD</AvatarFallback>
+            <AvatarImage src={user.avatar_url} />
+            <AvatarFallback>{user.first_name?.charAt(0)}{user.last_name?.charAt(0)}</AvatarFallback>
           </Avatar>
         </div>
       </div>

@@ -3,20 +3,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Eye, 
-  EyeOff, 
-  Shield, 
-  Lock
-} from "lucide-react";
+import { Eye, EyeOff, Shield, Lock } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
-interface AuthProps {
-  mode: "signin" | "signup";
-  onSuccess: () => void;
-  onToggleMode: () => void;
-}
-
-const Auth = ({ mode, onSuccess, onToggleMode }: AuthProps) => {
+const Auth = () => {
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
@@ -26,6 +19,15 @@ const Auth = ({ mode, onSuccess, onToggleMode }: AuthProps) => {
     confirmPassword: ""
   });
   const [isLoading, setIsLoading] = useState(false);
+  
+  const { signUp, signIn, user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const isSignIn = mode === "signin";
 
@@ -33,11 +35,23 @@ const Auth = ({ mode, onSuccess, onToggleMode }: AuthProps) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      if (isSignIn) {
+        const { error } = await signIn(formData.email, formData.password);
+        if (!error) {
+          navigate('/dashboard');
+        }
+      } else {
+        if (formData.password !== formData.confirmPassword) {
+          alert("Passwords don't match");
+          return;
+        }
+        
+        await signUp(formData.email, formData.password, formData.firstName, formData.lastName);
+      }
+    } finally {
       setIsLoading(false);
-      onSuccess();
-    }, 2000);
+    }
   };
 
   return (
@@ -192,7 +206,7 @@ const Auth = ({ mode, onSuccess, onToggleMode }: AuthProps) => {
                   <Button 
                     variant="ghost" 
                     className="text-purple-600 hover:text-purple-700 ml-1 p-0 h-auto"
-                    onClick={onToggleMode}
+                    onClick={() => setMode(isSignIn ? "signup" : "signin")}
                   >
                     {isSignIn ? "Sign up" : "Sign in"}
                   </Button>

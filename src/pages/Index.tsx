@@ -1,42 +1,28 @@
 
-import { useState } from "react";
+import { useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import Auth from "./Auth";
-import Dashboard from "../components/dashboard/Dashboard";
 
 const Index = () => {
-  const [currentView, setCurrentView] = useState<"signin" | "signup" | "dashboard">("signin");
-  const [user, setUser] = useState(null);
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
-  const handleAuthSuccess = () => {
-    setUser({ name: "John Doe", email: "john@example.com" });
-    setCurrentView("dashboard");
-  };
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/dashboard');
+    }
+  }, [user, loading, navigate]);
 
-  const handleSignOut = () => {
-    setUser(null);
-    setCurrentView("signin");
-  };
-
-  const toggleAuthMode = () => {
-    setCurrentView(currentView === "signin" ? "signup" : "signin");
-  };
-
-  if (currentView === "dashboard") {
+  if (loading) {
     return (
-      <Dashboard 
-        user={user}
-        onSignOut={handleSignOut}
-      />
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
     );
   }
 
-  return (
-    <Auth 
-      mode={currentView}
-      onSuccess={handleAuthSuccess}
-      onToggleMode={toggleAuthMode}
-    />
-  );
+  return <Auth />;
 };
 
 export default Index;
