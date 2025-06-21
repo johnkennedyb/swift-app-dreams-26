@@ -31,13 +31,30 @@ const Auth = () => {
 
   const isSignIn = mode === "signin";
 
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-numeric characters
+    const numericValue = value.replace(/\D/g, '');
+    
+    // Add country code if not present
+    if (numericValue.length > 0 && !numericValue.startsWith('234')) {
+      if (numericValue.startsWith('0')) {
+        return '+234' + numericValue.substring(1);
+      } else if (numericValue.length === 10) {
+        return '+234' + numericValue;
+      }
+    }
+    
+    return '+' + numericValue;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
       if (isSignIn) {
-        const { error } = await signIn(formData.phone, formData.password);
+        const formattedPhone = formatPhoneNumber(formData.phone);
+        const { error } = await signIn(formattedPhone, formData.password);
         if (!error) {
           navigate('/dashboard');
         }
@@ -47,7 +64,8 @@ const Auth = () => {
           return;
         }
         
-        await signUp(formData.phone, formData.password, formData.firstName, formData.lastName);
+        const formattedPhone = formatPhoneNumber(formData.phone);
+        await signUp(formattedPhone, formData.password, formData.firstName, formData.lastName);
       }
     } finally {
       setIsLoading(false);
@@ -85,8 +103,8 @@ const Auth = () => {
               </CardTitle>
               <p className="text-gray-600 mt-2">
                 {isSignIn 
-                  ? "Sign in to your AppBacus account" 
-                  : "Join AppBacus today"
+                  ? "Sign in with your phone number" 
+                  : "Join AppBacus with your phone number"
                 }
               </p>
             </CardHeader>
@@ -130,12 +148,15 @@ const Auth = () => {
                   </label>
                   <Input
                     type="tel"
-                    placeholder="+234 800 000 0000"
+                    placeholder="08012345678 or +2348012345678"
                     value={formData.phone}
                     onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                     className="h-12"
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    This will be your account number for receiving money
+                  </p>
                 </div>
 
                 <div>

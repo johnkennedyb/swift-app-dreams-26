@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event, session);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -31,6 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -41,8 +43,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (phone: string, password: string, firstName: string, lastName: string) => {
     try {
+      // Since phone auth might be disabled, we'll use email format with phone number
+      // Convert phone to email format for Supabase auth
+      const emailFromPhone = `${phone.replace(/[^0-9]/g, '')}@phone.local`;
+      
       const { error } = await supabase.auth.signUp({
-        phone,
+        email: emailFromPhone,
         password,
         options: {
           data: {
@@ -62,7 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         toast({
           title: "Success!",
-          description: "Please check your phone for verification code.",
+          description: "Account created successfully. You can now sign in.",
         });
       }
 
@@ -79,8 +85,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (phone: string, password: string) => {
     try {
+      // Convert phone to email format for signin
+      const emailFromPhone = `${phone.replace(/[^0-9]/g, '')}@phone.local`;
+      
       const { error } = await supabase.auth.signInWithPassword({
-        phone,
+        email: emailFromPhone,
         password,
       });
 
