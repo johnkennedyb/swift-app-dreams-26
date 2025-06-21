@@ -14,7 +14,7 @@ const Auth = () => {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    email: "",
+    phone: "",
     password: "",
     confirmPassword: ""
   });
@@ -37,7 +37,7 @@ const Auth = () => {
     
     try {
       if (isSignIn) {
-        const { error } = await signIn(formData.email, formData.password);
+        const { error } = await signIn(formData.phone, formData.password);
         if (!error) {
           navigate('/dashboard');
         }
@@ -47,7 +47,7 @@ const Auth = () => {
           return;
         }
         
-        await signUp(formData.email, formData.password, formData.firstName, formData.lastName);
+        await signUp(formData.phone, formData.password, formData.firstName, formData.lastName);
       }
     } finally {
       setIsLoading(false);
@@ -126,13 +126,13 @@ const Auth = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address
+                    Phone Number
                   </label>
                   <Input
-                    type="email"
-                    placeholder="john@example.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    type="tel"
+                    placeholder="+234 800 000 0000"
+                    value={formData.phone}
+                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                     className="h-12"
                     required
                   />

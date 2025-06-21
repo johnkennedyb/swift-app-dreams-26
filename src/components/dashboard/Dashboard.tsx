@@ -203,9 +203,9 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Recipient ID or Email</label>
+            <label className="block text-sm font-medium mb-2">Recipient Phone Number</label>
             <Input
-              placeholder="Enter recipient details"
+              placeholder="Enter phone number (account number)"
               value={recipientId}
               onChange={(e) => setRecipientId(e.target.value)}
             />
@@ -404,7 +404,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
 
       {/* Bottom Navigation */}
       {currentView === "main" && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 mb-5">
           <div className="flex justify-around">
             {[
               { id: "home", icon: Home, label: "Home" },
