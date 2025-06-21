@@ -30,6 +30,7 @@ import { Profile } from "@/hooks/useProfile";
 import { Wallet } from "@/hooks/useWallet";
 import { usePayment } from "@/hooks/usePayment";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardProps {
   user: Profile;
@@ -45,6 +46,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
   const [recipientId, setRecipientId] = useState("");
   const [fundAmount, setFundAmount] = useState("");
   
+  const { user: authUser } = useAuth();
   const { processPayment, loading: paymentLoading } = usePayment();
   const { toast } = useToast();
 
@@ -322,7 +324,16 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
             return;
           }
 
-          const result = await processPayment(amount, user.email || '');
+          if (!authUser?.email) {
+            toast({
+              title: "Error",
+              description: "Unable to get user email for payment",
+              variant: "destructive",
+            });
+            return;
+          }
+
+          const result = await processPayment(amount, authUser.email);
           if (result) {
             toast({
               title: "Payment Initialized",
