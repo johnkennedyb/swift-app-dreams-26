@@ -1,1 +1,21 @@
+
 project_id = "ylayvgpstrbxsimkliza"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+port = 54324
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://7d0efb0f-c56f-490e-9127-da573c76b6a4.lovableproject.com"]
+jwt_expiry = 3600
+refresh_token_rotation_enabled = true
+security_update_password_require_reauthentication = true
+
+[functions.verify-payment]
+verify_jwt = true

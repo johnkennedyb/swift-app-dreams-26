@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +28,8 @@ import ProjectsPage from "./ProjectsPage";
 import ProfilePage from "./ProfilePage";
 import { Profile } from "@/hooks/useProfile";
 import { Wallet } from "@/hooks/useWallet";
+import { usePayment } from "@/hooks/usePayment";
+import { useToast } from "@/hooks/use-toast";
 
 interface DashboardProps {
   user: Profile;
@@ -42,6 +43,10 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
   const [showBalance, setShowBalance] = useState(true);
   const [sendAmount, setSendAmount] = useState("");
   const [recipientId, setRecipientId] = useState("");
+  const [fundAmount, setFundAmount] = useState("");
+  
+  const { processPayment, loading: paymentLoading } = usePayment();
+  const { toast } = useToast();
 
   const userBalance = wallet.balance;
   const currency = wallet.currency;
@@ -253,6 +258,85 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
     </div>
   );
 
+  const renderAddFundsFlow = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="icon" onClick={() => setCurrentView("main")}>
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <h1 className="text-xl font-bold">Add Funds</h1>
+        <div></div>
+      </div>
+
+      <Card className="p-6">
+        <div className="text-center mb-6">
+          <p className="text-sm text-gray-600 mb-2">Current Balance</p>
+          <p className="text-2xl font-bold">{currencySymbol}{userBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Amount to Add</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                {currencySymbol}
+              </span>
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={fundAmount}
+                onChange={(e) => setFundAmount(e.target.value)}
+                className="pl-8 text-lg"
+                min="100"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Minimum amount: ₦100</p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {[1000, 5000, 10000].map((amount) => (
+              <Button
+                key={amount}
+                variant="outline"
+                size="sm"
+                onClick={() => setFundAmount(amount.toString())}
+                className="text-sm"
+              >
+                ₦{amount.toLocaleString()}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      <Button 
+        className="w-full bg-purple-600 hover:bg-purple-700 p-4 text-lg"
+        onClick={async () => {
+          const amount = parseFloat(fundAmount);
+          if (!amount || amount < 100) {
+            toast({
+              title: "Invalid Amount",
+              description: "Please enter an amount of at least ₦100",
+              variant: "destructive",
+            });
+            return;
+          }
+
+          const result = await processPayment(amount, user.email || '');
+          if (result) {
+            toast({
+              title: "Payment Initialized",
+              description: "Complete your payment in the popup window",
+            });
+          }
+        }}
+        disabled={paymentLoading || !fundAmount || parseFloat(fundAmount) < 100}
+      >
+        {paymentLoading ? "Processing..." : `Add ${currencySymbol}${fundAmount || "0.00"}`}
+      </Button>
+    </div>
+  );
+
   const renderMainContent = () => {
     switch (activeTab) {
       case "home":
@@ -272,6 +356,8 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
     switch (currentView) {
       case "send-money":
         return renderSendMoneyFlow();
+      case "add-funds":
+        return renderAddFundsFlow();
       case "confirmation":
         return renderConfirmation();
       default:
