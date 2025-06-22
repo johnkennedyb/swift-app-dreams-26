@@ -21,7 +21,10 @@ import {
   Settings,
   Lock,
   Smartphone,
-  Loader2
+  Loader2,
+  Eye,
+  EyeOff,
+  TrendingUp
 } from "lucide-react";
 
 import { Profile } from "@/hooks/useProfile";
@@ -44,6 +47,7 @@ const ProfilePage = ({ user, wallet, onSignOut }: ProfilePageProps) => {
   
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showBalance, setShowBalance] = useState(true);
   const [profileData, setProfileData] = useState({
     firstName: user.first_name || "",
     lastName: user.last_name || "",
@@ -51,6 +55,10 @@ const ProfilePage = ({ user, wallet, onSignOut }: ProfilePageProps) => {
     address: user.address || "",
     dateOfBirth: user.date_of_birth || ""
   });
+
+  const userBalance = wallet.balance;
+  const currency = wallet.currency;
+  const currencySymbol = currency === "NGN" ? "₦" : "$";
 
   // Calculate user statistics from real data
   const userTransactions = transactions.filter(t => t.user_id === user.id);
@@ -126,6 +134,42 @@ const ProfilePage = ({ user, wallet, onSignOut }: ProfilePageProps) => {
         </Button>
       </div>
 
+      {/* Balance Card */}
+      <Card className="bg-gradient-to-br from-purple-600 to-purple-700 text-white border-0">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <Shield className="w-5 h-5" />
+              <span className="text-sm opacity-90">Available Balance</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/20"
+              onClick={() => setShowBalance(!showBalance)}
+            >
+              {showBalance ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            </Button>
+          </div>
+          <div className="mb-4">
+            <p className="text-3xl font-bold">
+              {showBalance ? `${currencySymbol}${userBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : "••••••"}
+            </p>
+            <p className="text-sm opacity-90">{currency}</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-1">
+              <TrendingUp className="w-4 h-4" />
+              <span className="text-sm">+2.5% this month</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Globe className="w-4 h-4" />
+              <span className="text-sm">Global</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Profile Header */}
       <Card className="p-6">
         <div className="flex flex-col items-center text-center space-y-4">
@@ -144,20 +188,10 @@ const ProfilePage = ({ user, wallet, onSignOut }: ProfilePageProps) => {
             <h2 className="text-xl font-bold text-gray-900">
               {user.first_name} {user.last_name}
             </h2>
-            <p className="text-gray-600">ID: {user.id.substring(0, 8)}...</p>
+            <p className="text-gray-600">Account: {user.account_number || user.phone}</p>
             <Badge variant="outline" className="mt-2">
               Verified Member
             </Badge>
-          </div>
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div>
-              <p className="text-lg font-bold text-purple-600">₦{wallet.balance.toLocaleString()}</p>
-              <p className="text-sm text-gray-600">Wallet Balance</p>
-            </div>
-            <div>
-              <p className="text-lg font-bold text-green-600">{userTransactions.length}</p>
-              <p className="text-sm text-gray-600">Total Transactions</p>
-            </div>
           </div>
         </div>
       </Card>

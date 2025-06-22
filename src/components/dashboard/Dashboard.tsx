@@ -8,18 +8,12 @@ import {
   Home, 
   User, 
   Settings, 
-  Bell, 
   ArrowLeft,
   CheckCircle,
   Plus,
   ArrowUpRight,
   ArrowDownLeft,
-  Eye,
-  EyeOff,
   CreditCard,
-  TrendingUp,
-  Shield,
-  Globe,
   Heart
 } from "lucide-react";
 
@@ -41,7 +35,6 @@ interface DashboardProps {
 const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
   const [activeTab, setActiveTab] = useState("home");
   const [currentView, setCurrentView] = useState("main");
-  const [showBalance, setShowBalance] = useState(true);
   const [sendAmount, setSendAmount] = useState("");
   const [recipientId, setRecipientId] = useState("");
   const [fundAmount, setFundAmount] = useState("");
@@ -73,56 +66,16 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Good morning, {user.first_name}</h1>
-          <p className="text-gray-600">Ready to support today?</p>
+          <h1 className="text-2xl font-bold text-gray-900">Accounting Made Easy</h1>
+          <p className="text-gray-600">Manage your finances effortlessly</p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
-          </Button>
           <Avatar className="w-10 h-10">
             <AvatarImage src={user.avatar_url} />
             <AvatarFallback>{user.first_name?.charAt(0)}{user.last_name?.charAt(0)}</AvatarFallback>
           </Avatar>
         </div>
       </div>
-
-      {/* Balance Card */}
-      <Card className="bg-gradient-to-br from-purple-600 to-purple-700 text-white border-0">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <Shield className="w-5 h-5" />
-              <span className="text-sm opacity-90">Available Balance</span>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white hover:bg-white/20"
-              onClick={() => setShowBalance(!showBalance)}
-            >
-              {showBalance ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-            </Button>
-          </div>
-          <div className="mb-4">
-            <p className="text-3xl font-bold">
-              {showBalance ? `${currencySymbol}${userBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : "••••••"}
-            </p>
-            <p className="text-sm opacity-90">{currency}</p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-1">
-              <TrendingUp className="w-4 h-4" />
-              <span className="text-sm">+2.5% this month</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <Globe className="w-4 h-4" />
-              <span className="text-sm">Global</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Quick Actions */}
       <div>
@@ -387,9 +340,6 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
           <span className="text-gray-900 text-lg font-bold">AppBacus</span>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="icon">
-            <Bell className="w-5 h-5" />
-          </Button>
           <Avatar className="w-8 h-8">
             <AvatarImage src={user.avatar_url} />
             <AvatarFallback>{user.first_name?.charAt(0)}{user.last_name?.charAt(0)}</AvatarFallback>

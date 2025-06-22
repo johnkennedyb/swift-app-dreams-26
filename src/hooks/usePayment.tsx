@@ -21,10 +21,13 @@ export const usePayment = () => {
     }
 
     setLoading(true);
+    console.log(`Processing payment: Amount=${amount}, Email=${email}`);
 
     try {
-      // Initialize payment with Paystack
+      // Test Paystack API connection first
       const reference = `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      console.log('Testing Paystack API with reference:', reference);
       
       const paymentResponse = await initializePayment({
         email,
@@ -37,18 +40,45 @@ export const usePayment = () => {
         },
       });
 
+      console.log('Paystack response:', paymentResponse);
+
       if (!paymentResponse.status) {
-        throw new Error(paymentResponse.message);
+        console.error('Paystack initialization failed:', paymentResponse.message);
+        
+        // Check if it's an API key issue
+        if (paymentResponse.message?.includes('Invalid key') || paymentResponse.message?.includes('authorization')) {
+          toast({
+            title: "Payment Configuration Error",
+            description: "Paystack API key is not properly configured. Please check your settings.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Payment Error",
+            description: paymentResponse.message || "Failed to initialize payment",
+            variant: "destructive",
+          });
+        }
+        return null;
       }
 
+      console.log('Payment initialization successful, opening payment URL...');
+      
       // Open Paystack payment popup
-      openPaystackPayment(paymentResponse.data!.authorization_url);
+      if (paymentResponse.data?.authorization_url) {
+        openPaystackPayment(paymentResponse.data.authorization_url);
+        
+        toast({
+          title: "Payment Initialized",
+          description: "Complete your payment in the new window",
+        });
+      } else {
+        throw new Error('No authorization URL received from Paystack');
+      }
 
-      // Listen for payment completion (in a real app, you'd use Paystack's callback)
-      // For now, we'll provide a manual verification method
       return {
         reference,
-        authorization_url: paymentResponse.data!.authorization_url,
+        authorization_url: paymentResponse.data?.authorization_url,
         verifyPayment: () => verifyPayment(reference, amount),
       };
 
@@ -68,6 +98,8 @@ export const usePayment = () => {
   const verifyPayment = async (reference: string, amount: number) => {
     if (!user) return;
 
+    console.log(`Verifying payment: Reference=${reference}, Amount=${amount}`);
+
     try {
       const { data, error } = await supabase.functions.invoke('verify-payment', {
         body: {
@@ -77,7 +109,12 @@ export const usePayment = () => {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
+
+      console.log('Payment verification result:', data);
 
       if (data.success) {
         toast({
