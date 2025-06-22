@@ -14,7 +14,7 @@ const Auth = () => {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    phone: "",
+    email: "",
     password: "",
     confirmPassword: ""
   });
@@ -31,30 +31,13 @@ const Auth = () => {
 
   const isSignIn = mode === "signin";
 
-  const formatPhoneNumber = (value: string) => {
-    // Remove all non-numeric characters
-    const numericValue = value.replace(/\D/g, '');
-    
-    // Add country code if not present
-    if (numericValue.length > 0 && !numericValue.startsWith('234')) {
-      if (numericValue.startsWith('0')) {
-        return '+234' + numericValue.substring(1);
-      } else if (numericValue.length === 10) {
-        return '+234' + numericValue;
-      }
-    }
-    
-    return '+' + numericValue;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
       if (isSignIn) {
-        const formattedPhone = formatPhoneNumber(formData.phone);
-        const { error } = await signIn(formattedPhone, formData.password);
+        const { error } = await signIn(formData.email, formData.password);
         if (!error) {
           navigate('/dashboard');
         }
@@ -64,8 +47,7 @@ const Auth = () => {
           return;
         }
         
-        const formattedPhone = formatPhoneNumber(formData.phone);
-        await signUp(formattedPhone, formData.password, formData.firstName, formData.lastName);
+        await signUp(formData.email, formData.password, formData.firstName, formData.lastName);
       }
     } finally {
       setIsLoading(false);
@@ -103,8 +85,8 @@ const Auth = () => {
               </CardTitle>
               <p className="text-gray-600 mt-2">
                 {isSignIn 
-                  ? "Sign in with your phone number" 
-                  : "Join AppBacus with your phone number"
+                  ? "Sign in to your AppBacus account" 
+                  : "Join AppBacus today"
                 }
               </p>
             </CardHeader>
@@ -144,19 +126,16 @@ const Auth = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number
+                    Email Address
                   </label>
                   <Input
-                    type="tel"
-                    placeholder="08012345678 or +2348012345678"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    type="email"
+                    placeholder="john@example.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                     className="h-12"
                     required
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    This will be your account number for receiving money
-                  </p>
                 </div>
 
                 <div>

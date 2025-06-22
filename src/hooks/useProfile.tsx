@@ -11,7 +11,6 @@ export interface Profile {
   address?: string;
   date_of_birth?: string;
   avatar_url?: string;
-  account_number?: string;
   created_at: string;
   updated_at: string;
 }

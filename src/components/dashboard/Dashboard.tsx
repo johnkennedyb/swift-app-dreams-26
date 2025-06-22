@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,7 +43,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
   const [currentView, setCurrentView] = useState("main");
   const [showBalance, setShowBalance] = useState(true);
   const [sendAmount, setSendAmount] = useState("");
-  const [recipientPhone, setRecipientPhone] = useState("");
+  const [recipientId, setRecipientId] = useState("");
   const [fundAmount, setFundAmount] = useState("");
   
   const { user: authUser } = useAuth();
@@ -55,7 +54,6 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
   const currency = wallet.currency;
   const currencySymbol = currency === "NGN" ? "₦" : "$";
 
-  // Mock recent transactions for now
   const recentTransactions = [
     { id: 1, type: "sent", recipient: "Project Alpha", amount: 250, time: "2 hours ago", status: "completed" },
     { id: 2, type: "received", sender: "Sarah Johnson", amount: 100, time: "5 hours ago", status: "completed" },
@@ -69,35 +67,6 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
     { id: 3, title: "Add Funds", icon: Plus, action: () => setCurrentView("add-funds") },
     { id: 4, title: "Cards", icon: CreditCard, action: () => {} },
   ];
-
-  const handleSendMoney = async () => {
-    if (!sendAmount || !recipientPhone) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter amount and recipient phone number",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const amount = parseFloat(sendAmount);
-    if (amount <= 0 || amount > userBalance) {
-      toast({
-        title: "Invalid Amount",
-        description: "Please enter a valid amount within your balance",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Here you would normally process the money transfer
-    // For now, just show success
-    setCurrentView("confirmation");
-    toast({
-      title: "Money Sent!",
-      description: `₦${amount} sent to ${recipientPhone}`,
-    });
-  };
 
   const renderHomeTab = () => (
     <div className="space-y-6">
@@ -142,20 +111,14 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
             </p>
             <p className="text-sm opacity-90">{currency}</p>
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-1">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-sm">+2.5% this month</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <Globe className="w-4 h-4" />
-                <span className="text-sm">Global</span>
-              </div>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-1">
+              <TrendingUp className="w-4 h-4" />
+              <span className="text-sm">+2.5% this month</span>
             </div>
-            <div className="text-right">
-              <p className="text-xs opacity-75">Account Number</p>
-              <p className="text-sm font-mono">{user.account_number || user.phone}</p>
+            <div className="flex items-center space-x-1">
+              <Globe className="w-4 h-4" />
+              <span className="text-sm">Global</span>
             </div>
           </div>
         </CardContent>
@@ -240,13 +203,12 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Recipient Phone Number</label>
+            <label className="block text-sm font-medium mb-2">Recipient ID or Email</label>
             <Input
-              placeholder="Enter phone number (account number)"
-              value={recipientPhone}
-              onChange={(e) => setRecipientPhone(e.target.value)}
+              placeholder="Enter recipient details"
+              value={recipientId}
+              onChange={(e) => setRecipientId(e.target.value)}
             />
-            <p className="text-xs text-gray-500 mt-1">Phone number is their account number</p>
           </div>
 
           <div>
@@ -274,7 +236,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
 
       <Button 
         className="w-full bg-purple-600 hover:bg-purple-700 p-4 text-lg"
-        onClick={handleSendMoney}
+        onClick={() => setCurrentView("confirmation")}
       >
         Send {currencySymbol}{sendAmount || "0.00"}
       </Button>
@@ -291,8 +253,6 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
         onClick={() => {
           setCurrentView("main");
           setActiveTab("home");
-          setSendAmount("");
-          setRecipientPhone("");
         }}
       >
         Back to Home
@@ -364,10 +324,16 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
             return;
           }
 
-          // Use phone number as email for payment processing
-          const emailFromPhone = `${user.phone?.replace(/[^0-9]/g, '')}@phone.local`;
+          if (!authUser?.email) {
+            toast({
+              title: "Error",
+              description: "Unable to get user email for payment",
+              variant: "destructive",
+            });
+            return;
+          }
 
-          const result = await processPayment(amount, emailFromPhone);
+          const result = await processPayment(amount, authUser.email);
           if (result) {
             toast({
               title: "Payment Initialized",
@@ -377,7 +343,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
         }}
         disabled={paymentLoading || !fundAmount || parseFloat(fundAmount) < 100}
       >
-        {pay​mentLoading ? "Processing..." : `Add ${currencySymbol}${fundAmount || "0.00"}`}
+        {paymentLoading ? "Processing..." : `Add ${currencySymbol}${fundAmount || "0.00"}`}
       </Button>
     </div>
   );
@@ -432,13 +398,13 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
       </div>
 
       {/* Main Content */}
-      <div className="pb-24 px-4 pt-6">
+      <div className="pb-20 px-4 pt-6">
         {renderContent()}
       </div>
 
       {/* Bottom Navigation */}
       {currentView === "main" && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 mb-5">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
           <div className="flex justify-around">
             {[
               { id: "home", icon: Home, label: "Home" },

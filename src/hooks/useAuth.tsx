@@ -8,8 +8,8 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (phone: string, password: string, firstName: string, lastName: string) => Promise<{ error: any }>;
-  signIn: (phone: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -24,7 +24,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state changed:', event, session);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -32,7 +31,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -41,20 +39,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (phone: string, password: string, firstName: string, lastName: string) => {
+  const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
     try {
-      // Since phone auth might be disabled, we'll use email format with phone number
-      // Convert phone to email format for Supabase auth
-      const emailFromPhone = `${phone.replace(/[^0-9]/g, '')}@phone.local`;
-      
       const { error } = await supabase.auth.signUp({
-        email: emailFromPhone,
+        email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
             first_name: firstName,
             last_name: lastName,
-            phone: phone,
           }
         }
       });
@@ -68,7 +62,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         toast({
           title: "Success!",
-          description: "Account created successfully. You can now sign in.",
+          description: "Please check your email to verify your account.",
         });
       }
 
@@ -83,13 +77,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signIn = async (phone: string, password: string) => {
+  const signIn = async (email: string, password: string) => {
     try {
-      // Convert phone to email format for signin
-      const emailFromPhone = `${phone.replace(/[^0-9]/g, '')}@phone.local`;
-      
       const { error } = await supabase.auth.signInWithPassword({
-        email: emailFromPhone,
+        email,
         password,
       });
 

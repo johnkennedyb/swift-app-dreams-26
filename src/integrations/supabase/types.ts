@@ -9,41 +9,8 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      contacts: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          phone: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          phone: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          phone?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "contacts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
-          account_number: string | null
           address: string | null
           avatar_url: string | null
           created_at: string
@@ -55,7 +22,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_number?: string | null
           address?: string | null
           avatar_url?: string | null
           created_at?: string
@@ -67,7 +33,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          account_number?: string | null
           address?: string | null
           avatar_url?: string | null
           created_at?: string
