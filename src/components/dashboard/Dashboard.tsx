@@ -13,8 +13,15 @@ import {
   Plus,
   ArrowUpRight,
   ArrowDownLeft,
-  Heart
+  Heart,
+  MoreVertical
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import SupportPage from "./SupportPage";
 import ProjectsPage from "./ProjectsPage";
@@ -50,7 +57,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
 
   const quickActions = [
     { id: 1, title: "Send Money", icon: ArrowUpRight, action: () => setCurrentView("send-money") },
-    { id: 2, title: "Request Support", icon: ArrowDownLeft, action: () => setCurrentView("request-support") },
+    { id: 2, title: "Request Support", icon: ArrowDownLeft, action: () => setActiveTab("support") },
     { id: 3, title: "Add Funds", icon: Plus, action: () => setCurrentView("add-funds") },
   ];
 
@@ -61,12 +68,6 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Accounting Made Easy</h1>
           <p className="text-gray-600">Manage your finances effortlessly</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Avatar className="w-10 h-10">
-            <AvatarImage src={user.avatar_url} />
-            <AvatarFallback>{user.first_name?.charAt(0)}{user.last_name?.charAt(0)}</AvatarFallback>
-          </Avatar>
         </div>
       </div>
 
@@ -349,21 +350,35 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
           <span className="text-gray-900 text-lg font-bold">AppBacus</span>
         </div>
         <div className="flex items-center space-x-2">
-          <Avatar className="w-8 h-8">
-            <AvatarImage src={user.avatar_url} />
-            <AvatarFallback>{user.first_name?.charAt(0)}{user.last_name?.charAt(0)}</AvatarFallback>
-          </Avatar>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setActiveTab("profile")}>
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setActiveTab("projects")}>
+                Projects
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onSignOut}>
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="pb-24 px-4 pt-6">
+      <div className="pb-28 px-4 pt-6">
         {renderContent()}
       </div>
 
       {/* Bottom Navigation */}
       {currentView === "main" && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 pb-6">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 pb-8">
           <div className="flex justify-around">
             {[
               { id: "home", icon: Home, label: "Home" },

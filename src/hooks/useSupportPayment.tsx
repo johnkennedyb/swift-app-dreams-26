@@ -68,23 +68,41 @@ export const useSupportPayment = () => {
 
       if (transactionError) throw transactionError;
 
-      // Update sender's wallet (debit)
-      const { error: senderWalletError } = await supabase
-        .from('wallets')
-        .update({
-          balance: supabase.sql`balance - ${amount}`,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id)
-        .eq('currency', 'NGN');
+      // Update sender's wallet (debit) - using RPC call for safe balance update
+      const { error: senderWalletError } = await supabase.rpc('update_wallet_balance', {
+        p_user_id: user.id,
+        p_currency: 'NGN',
+        p_amount: -amount
+      });
 
-      if (senderWalletError) throw senderWalletError;
+      if (senderWalletError) {
+        // Fallback to direct update if RPC doesn't exist
+        const { error: fallbackError } = await supabase
+          .from('wallets')
+          .update({
+            balance: wallet.balance - amount,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id)
+          .eq('currency', 'NGN');
+
+        if (fallbackError) throw fallbackError;
+      }
 
       // Update recipient's wallet (credit)
+      const { data: recipientWallet, error: recipientWalletFetchError } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', supportRequest.requester_id)
+        .eq('currency', 'NGN')
+        .single();
+
+      if (recipientWalletFetchError) throw recipientWalletFetchError;
+
       const { error: recipientWalletError } = await supabase
         .from('wallets')
         .update({
-          balance: supabase.sql`balance + ${amount}`,
+          balance: recipientWallet.balance + amount,
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', supportRequest.requester_id)
