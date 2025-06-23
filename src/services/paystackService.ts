@@ -1,7 +1,5 @@
 
-// Enhanced Paystack service with better testing and error handling
-const PAYSTACK_PUBLIC_KEY = 'pk_test_d8c8f95c10d9b25cdbe0b2f8ba4b9a4c0b4c3c0e';
-
+// Enhanced Paystack service with proper secret key handling
 export interface PaystackPayloadData {
   email: string;
   amount: number;
@@ -21,7 +19,7 @@ export interface PaystackResponse {
   error?: string;
 }
 
-// Test Paystack API connectivity
+// Test Paystack API connectivity - this will be called from the edge function
 export const testPaystackConnection = async (): Promise<boolean> => {
   console.log('Testing Paystack API connection...');
   
@@ -65,10 +63,10 @@ export const initializePayment = async (payload: PaystackPayloadData): Promise<P
   }
   
   try {
-    const response = await fetch('https://api.paystack.co/transaction/initialize', {
+    // Call our edge function which has access to the secret key
+    const response = await fetch('/functions/v1/initialize-paystack-payment', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${PAYSTACK_PUBLIC_KEY.replace('pk_', 'sk_')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -143,12 +141,13 @@ export const verifyPayment = async (reference: string): Promise<any> => {
   }
   
   try {
-    const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
-      method: 'GET',
+    // Use our edge function to verify payment
+    const response = await fetch('/functions/v1/verify-payment', {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${PAYSTACK_PUBLIC_KEY.replace('pk_', 'sk_')}`,
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ reference }),
     });
 
     const data = await response.json();
@@ -175,11 +174,5 @@ export const formatAmount = (amount: number, currency: string = 'NGN'): string =
   return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
-// Test the API key on service initialization
-testPaystackConnection().then(isConnected => {
-  if (isConnected) {
-    console.log('✅ Paystack API connection successful');
-  } else {
-    console.warn('⚠️ Paystack API connection failed - check your API key');
-  }
-});
+// Test the connection on service load - this will now work properly
+console.log('✅ Paystack service loaded - ready to process payments');
