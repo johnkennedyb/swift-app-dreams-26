@@ -13,7 +13,6 @@ import {
   Plus,
   ArrowUpRight,
   ArrowDownLeft,
-  CreditCard,
   Heart
 } from "lucide-react";
 
@@ -25,6 +24,7 @@ import { Wallet } from "@/hooks/useWallet";
 import { usePayment } from "@/hooks/usePayment";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useTransactions } from "@/hooks/useTransactions";
 
 interface DashboardProps {
   user: Profile;
@@ -41,24 +41,17 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
   
   const { user: authUser } = useAuth();
   const { processPayment, loading: paymentLoading } = usePayment();
+  const { transactions, loading: transactionsLoading } = useTransactions();
   const { toast } = useToast();
 
   const userBalance = wallet.balance;
   const currency = wallet.currency;
   const currencySymbol = currency === "NGN" ? "₦" : "$";
 
-  const recentTransactions = [
-    { id: 1, type: "sent", recipient: "Project Alpha", amount: 250, time: "2 hours ago", status: "completed" },
-    { id: 2, type: "received", sender: "Sarah Johnson", amount: 100, time: "5 hours ago", status: "completed" },
-    { id: 3, type: "sent", recipient: "Emergency Fund", amount: 500, time: "Yesterday", status: "completed" },
-    { id: 4, type: "received", sender: "Community Pool", amount: 1000, time: "2 days ago", status: "completed" },
-  ];
-
   const quickActions = [
     { id: 1, title: "Send Money", icon: ArrowUpRight, action: () => setCurrentView("send-money") },
     { id: 2, title: "Request Support", icon: ArrowDownLeft, action: () => setCurrentView("request-support") },
     { id: 3, title: "Add Funds", icon: Plus, action: () => setCurrentView("add-funds") },
-    { id: 4, title: "Cards", icon: CreditCard, action: () => {} },
   ];
 
   const renderHomeTab = () => (
@@ -101,38 +94,54 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
           </Button>
         </div>
         <div className="space-y-3">
-          {recentTransactions.map((transaction) => (
-            <Card key={transaction.id} className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    transaction.type === 'sent' ? 'bg-red-100' : 'bg-green-100'
-                  }`}>
-                    {transaction.type === 'sent' ? 
-                      <ArrowUpRight className="w-5 h-5 text-red-600" /> : 
-                      <ArrowDownLeft className="w-5 h-5 text-green-600" />
-                    }
-                  </div>
-                  <div>
-                    <p className="font-medium">
-                      {transaction.type === 'sent' ? transaction.recipient : transaction.sender}
-                    </p>
-                    <p className="text-sm text-gray-600">{transaction.time}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className={`font-semibold ${
-                    transaction.type === 'sent' ? 'text-red-600' : 'text-green-600'
-                  }`}>
-                    {transaction.type === 'sent' ? '-' : '+'}{currencySymbol}{transaction.amount}
-                  </p>
-                  <Badge variant="outline" className="text-xs">
-                    {transaction.status}
-                  </Badge>
-                </div>
-              </div>
+          {transactionsLoading ? (
+            <Card className="p-4">
+              <p className="text-gray-500 text-center">Loading transactions...</p>
             </Card>
-          ))}
+          ) : transactions.length === 0 ? (
+            <Card className="p-4">
+              <p className="text-gray-500 text-center">No transactions yet</p>
+            </Card>
+          ) : (
+            transactions.slice(0, 4).map((transaction) => (
+              <Card key={transaction.id} className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      transaction.type === 'debit' || transaction.type === 'transfer' ? 'bg-red-100' : 'bg-green-100'
+                    }`}>
+                      {transaction.type === 'debit' || transaction.type === 'transfer' ? 
+                        <ArrowUpRight className="w-5 h-5 text-red-600" /> : 
+                        <ArrowDownLeft className="w-5 h-5 text-green-600" />
+                      }
+                    </div>
+                    <div>
+                      <p className="font-medium">
+                        {transaction.description || 
+                         (transaction.type === 'credit' ? 'Wallet funding' : 
+                          transaction.recipient_profile ? 
+                            `${transaction.recipient_profile.first_name} ${transaction.recipient_profile.last_name}` : 
+                            'Transfer')}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {new Date(transaction.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-semibold ${
+                      transaction.type === 'debit' || transaction.type === 'transfer' ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {transaction.type === 'debit' || transaction.type === 'transfer' ? '-' : '+'}{currencySymbol}{transaction.amount.toFixed(2)}
+                    </p>
+                    <Badge variant="outline" className="text-xs">
+                      {transaction.status}
+                    </Badge>
+                  </div>
+                </div>
+              </Card>
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -348,13 +357,13 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
       </div>
 
       {/* Main Content */}
-      <div className="pb-20 px-4 pt-6">
+      <div className="pb-24 px-4 pt-6">
         {renderContent()}
       </div>
 
       {/* Bottom Navigation */}
       {currentView === "main" && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 pb-6">
           <div className="flex justify-around">
             {[
               { id: "home", icon: Home, label: "Home" },

@@ -24,15 +24,20 @@ import {
 import { useSupportRequests } from "@/hooks/useSupportRequests";
 import { useSupportComments } from "@/hooks/useSupportComments";
 import { useProjects } from "@/hooks/useProjects";
+import { useSupportPayment } from "@/hooks/useSupportPayment";
+import { useWallet } from "@/hooks/useWallet";
 
 const SupportPage = () => {
   const { supportRequests, loading: supportLoading, createSupportRequest } = useSupportRequests();
   const { projects, loading: projectsLoading } = useProjects();
+  const { supportRequest, loading: supportPaymentLoading } = useSupportPayment();
+  const { wallet } = useWallet();
   const { toast } = useToast();
   
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [supportAmount, setSupportAmount] = useState("");
   const [formData, setFormData] = useState({
     project_id: "",
     title: "",
@@ -100,6 +105,26 @@ const SupportPage = () => {
     }
   };
 
+  const handleSupportRequest = async () => {
+    if (!selectedRequest || !supportAmount) return;
+
+    const amount = parseFloat(supportAmount);
+    if (amount <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const success = await supportRequest(selectedRequest, amount);
+    if (success) {
+      setSupportAmount("");
+      setSelectedRequest(null);
+    }
+  };
+
   const renderProjectDetail = (request: any) => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -141,16 +166,25 @@ const SupportPage = () => {
 
         <p className="text-gray-700 mb-6">{request.description}</p>
 
-        <div className="flex flex-wrap gap-3 mb-6">
-          <Button className="bg-purple-600 hover:bg-purple-700 flex-1">
-            Support ₦{request.amount_needed.toLocaleString()}
-          </Button>
-          <Button variant="outline" className="flex-1">
-            Decline
-          </Button>
-          <Button variant="outline" className="flex-1">
-            Message
-          </Button>
+        <div className="mb-6">
+          <h4 className="font-semibold mb-2">Support this request</h4>
+          <p className="text-sm text-gray-600 mb-2">Your wallet balance: ₦{wallet?.balance.toLocaleString() || '0'}</p>
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              placeholder="Enter amount"
+              value={supportAmount}
+              onChange={(e) => setSupportAmount(e.target.value)}
+              className="flex-1"
+            />
+            <Button 
+              className="bg-purple-600 hover:bg-purple-700"
+              onClick={handleSupportRequest}
+              disabled={supportPaymentLoading || !supportAmount}
+            >
+              {supportPaymentLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Support"}
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-4">
