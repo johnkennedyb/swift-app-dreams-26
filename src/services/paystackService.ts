@@ -63,32 +63,28 @@ export const initializePayment = async (payload: PaystackPayloadData): Promise<P
   }
   
   try {
-    // Call our edge function which has access to the secret key
-    const response = await fetch('/functions/v1/initialize-paystack-payment', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    // Call our edge function using Supabase client - this is the correct way
+    const { supabase } = await import('@/integrations/supabase/client');
+    
+    const { data, error } = await supabase.functions.invoke('initialize-paystack-payment', {
+      body: {
         ...payload,
         amount: Math.round(payload.amount * 100), // Convert to kobo and ensure integer
         currency: payload.currency || 'NGN',
         reference: payload.reference || `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      }),
+      },
     });
 
-    const data = await response.json();
     console.log('Paystack API response:', {
-      status: response.status,
-      ok: response.ok,
-      data: data
+      data: data,
+      error: error
     });
 
-    if (!response.ok) {
+    if (error) {
       return {
         status: false,
-        message: data.message || `HTTP ${response.status}: ${response.statusText}`,
-        error: data.message || 'Request failed',
+        message: error.message || 'Request failed',
+        error: error.message,
       };
     }
 
@@ -142,23 +138,19 @@ export const verifyPayment = async (reference: string): Promise<any> => {
   
   try {
     // Use our edge function to verify payment
-    const response = await fetch('/functions/v1/verify-payment', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ reference }),
+    const { supabase } = await import('@/integrations/supabase/client');
+    
+    const { data, error } = await supabase.functions.invoke('verify-payment', {
+      body: { reference },
     });
 
-    const data = await response.json();
     console.log('Payment verification response:', {
-      status: response.status,
-      ok: response.ok,
-      data: data
+      data: data,
+      error: error
     });
 
-    if (!response.ok) {
-      throw new Error(data.message || `Verification failed: ${response.status}`);
+    if (error) {
+      throw new Error(error.message || `Verification failed`);
     }
 
     return data;
