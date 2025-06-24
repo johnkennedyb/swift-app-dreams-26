@@ -13,13 +13,16 @@ import {
   Bell,
   Search,
   Menu,
-  X
+  X,
+  Home
 } from "lucide-react";
 import { Profile } from "@/hooks/useProfile";
 import { Wallet } from "@/hooks/useWallet";
+import HomePage from "./HomePage";
 import EnhancedProjectsPage from "./EnhancedProjectsPage";
 import EnhancedSupportPage from "./EnhancedSupportPage";
 import ProfilePage from "./ProfilePage";
+import BottomNavigation from "./BottomNavigation";
 
 interface DashboardProps {
   user: Profile;
@@ -28,10 +31,11 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
-  const [activeTab, setActiveTab] = useState("projects");
+  const [activeTab, setActiveTab] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navigation = [
+    { id: "home", name: "Home", icon: Home },
     { id: "projects", name: "Projects", icon: LayoutDashboard },
     { id: "support", name: "Support Hub", icon: Heart },
     { id: "profile", name: "Profile", icon: User },
@@ -39,14 +43,20 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
 
   const renderContent = () => {
     switch (activeTab) {
+      case "home":
+        return <HomePage user={user} wallet={wallet} />;
       case "projects":
         return <EnhancedProjectsPage />;
       case "support":
         return <EnhancedSupportPage />;
       case "profile":
         return <ProfilePage user={user} wallet={wallet} onSignOut={onSignOut} />;
-      default:
+      case "create":
+        // For now, redirect to projects page where they can create
+        setActiveTab("projects");
         return <EnhancedProjectsPage />;
+      default:
+        return <HomePage user={user} wallet={wallet} />;
     }
   };
 
@@ -60,8 +70,8 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
         />
       )}
 
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
+      {/* Sidebar - Hidden on mobile, visible on desktop */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 hidden lg:block ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="flex flex-col h-full">
@@ -201,6 +211,12 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
           {renderContent()}
         </main>
       </div>
+
+      {/* Bottom Navigation - Only visible on mobile */}
+      <BottomNavigation 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+      />
     </div>
   );
 };
