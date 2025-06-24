@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,11 +17,15 @@ import {
   Search,
   Filter,
   Loader2,
-  UserPlus
+  UserPlus,
+  ArrowLeft
 } from "lucide-react";
 import { useSupportRequests } from "@/hooks/useSupportRequests";
 import { useProjects } from "@/hooks/useProjects";
+import { useSupportPayment } from "@/hooks/useSupportPayment";
+import { useWallet } from "@/hooks/useWallet";
 import { supabase } from "@/integrations/supabase/client";
+import ProjectDetailPage from "./ProjectDetailPage";
 
 interface ProjectMember {
   id: string;
@@ -37,11 +40,17 @@ interface ProjectMember {
 const EnhancedSupportPage = () => {
   const { supportRequests, loading: supportLoading, createSupportRequest } = useSupportRequests();
   const { projects, loading: projectsLoading } = useProjects();
+  const { supportRequest, loading: supportPaymentLoading } = useSupportPayment();
+  const { wallet } = useWallet();
   const { toast } = useToast();
   
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [supportAmount, setSupportAmount] = useState("");
+  const [showSupportDialog, setShowSupportDialog] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     project_id: "",
     title: "",
@@ -50,6 +59,16 @@ const EnhancedSupportPage = () => {
   });
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // If a project is selected for detail view, show ProjectDetailPage
+  if (selectedProjectId) {
+    return (
+      <ProjectDetailPage 
+        projectId={selectedProjectId} 
+        onBack={() => setSelectedProjectId(null)} 
+      />
+    );
+  }
 
   const handleProjectChange = async (projectId: string) => {
     setFormData(prev => ({ ...prev, project_id: projectId }));
@@ -137,6 +156,46 @@ const EnhancedSupportPage = () => {
       setProjectMembers([]);
     }
     setIsCreating(false);
+  };
+
+  const handleSupportClick = (requestId: string) => {
+    setSelectedRequestId(requestId);
+    setSupportAmount("");
+    setShowSupportDialog(true);
+  };
+
+  const handleSupportSubmit = async () => {
+    if (!selectedRequestId || !supportAmount) return;
+
+    const amount = parseFloat(supportAmount);
+    if (amount <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (wallet && amount > wallet.balance) {
+      toast({
+        title: "Insufficient Balance",
+        description: "You don't have enough funds in your wallet",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const success = await supportRequest(selectedRequestId, amount);
+    if (success) {
+      setSupportAmount("");
+      setSelectedRequestId(null);
+      setShowSupportDialog(false);
+      toast({
+        title: "Success",
+        description: "Support sent successfully!",
+      });
+    }
   };
 
   const filteredRequests = supportRequests.filter(request =>
@@ -371,7 +430,11 @@ const EnhancedSupportPage = () => {
                       ₦{request.amount_needed.toLocaleString()}
                     </p>
                   </div>
-                  <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
+                  <Button 
+                    size="sm" 
+                    className="bg-purple-600 hover:bg-purple-700"
+                    onClick={() => handleSupportClick(request.id)}
+                  >
                     Support
                   </Button>
                 </div>
@@ -379,16 +442,67 @@ const EnhancedSupportPage = () => {
                   <span className="text-xs text-gray-500">
                     {new Date(request.created_at).toLocaleDateString()}
                   </span>
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
-                    <Heart className="w-3 h-3" />
-                    <span>0 supporters</span>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-purple-600 hover:text-purple-700"
+                    onClick={() => {
+                      const project = projects.find(p => p.id === request.project_id);
+                      if (project) {
+                        setSelectedProjectId(project.id);
+                      }
+                    }}
+                  >
+                    View Project
+                  </Button>
                 </div>
               </CardContent>
             </Card>
           ))
         )}
       </div>
+
+      {/* Support Dialog */}
+      <Dialog open={showSupportDialog} onOpenChange={setShowSupportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Support This Request</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Your wallet balance: ₦{wallet?.balance.toLocaleString() || '0'}</Label>
+            </div>
+            <div>
+              <Label htmlFor="support_amount">Amount to Support (NGN)</Label>
+              <Input
+                id="support_amount"
+                type="number"
+                value={supportAmount}
+                onChange={(e) => setSupportAmount(e.target.value)}
+                placeholder="Enter amount"
+                max={wallet?.balance || 0}
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => setShowSupportDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className="flex-1 bg-purple-600 hover:bg-purple-700"
+                onClick={handleSupportSubmit}
+                disabled={supportPaymentLoading || !supportAmount}
+              >
+                {supportPaymentLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Send Support
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

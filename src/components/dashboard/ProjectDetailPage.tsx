@@ -2,10 +2,13 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -22,10 +25,13 @@ import {
   TrendingUp,
   Heart,
   Share2,
-  MoreVertical
+  MoreVertical,
+  Loader2
 } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
-import { useTransactions } from "@/hooks/useTransactions";
+import { useSupportPayment } from "@/hooks/useSupportPayment";
+import { useWallet } from "@/hooks/useWallet";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ProjectDetailPageProps {
@@ -46,9 +52,13 @@ interface ProjectSupporter {
 
 const ProjectDetailPage = ({ projectId, onBack }: ProjectDetailPageProps) => {
   const { projects } = useProjects();
-  const { transactions } = useTransactions();
+  const { supportRequest, loading: supportPaymentLoading } = useSupportPayment();
+  const { wallet } = useWallet();
+  const { toast } = useToast();
   const [supporters, setSupporters] = useState<ProjectSupporter[]>([]);
   const [loading, setLoading] = useState(true);
+  const [supportAmount, setSupportAmount] = useState("");
+  const [showSupportDialog, setShowSupportDialog] = useState(false);
 
   const project = projects.find(p => p.id === projectId);
 
@@ -60,6 +70,7 @@ const ProjectDetailPage = ({ projectId, onBack }: ProjectDetailPageProps) => {
 
   const fetchProjectSupporters = async () => {
     try {
+      // Get supporters by looking for transactions that mention this project
       const { data, error } = await supabase
         .from('transactions')
         .select(`
@@ -72,17 +83,82 @@ const ProjectDetailPage = ({ projectId, onBack }: ProjectDetailPageProps) => {
             avatar_url
           )
         `)
-        .eq('project_id', projectId)
-        .eq('type', 'credit')
+        .eq('type', 'debit')
         .eq('status', 'completed')
+        .ilike('description', `%Support for:%`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setSupporters(data || []);
+      
+      // Filter transactions that are related to this project
+      const projectSupporters = (data || []).filter(transaction => 
+        transaction.description?.includes(project?.name || '')
+      );
+      
+      setSupporters(projectSupporters);
     } catch (error) {
       console.error('Error fetching project supporters:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSupportProject = async () => {
+    if (!supportAmount || !project) return;
+
+    const amount = parseFloat(supportAmount);
+    if (amount <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (wallet && amount > wallet.balance) {
+      toast({
+        title: "Insufficient Balance",
+        description: "You don't have enough funds in your wallet",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create a mock support request for this project to use the existing support system
+    try {
+      const { data: supportRequestData, error } = await supabase
+        .from('support_requests')
+        .insert({
+          project_id: projectId,
+          requester_id: project.admin_id,
+          title: `Support for ${project.name}`,
+          description: `Direct support for the project: ${project.name}`,
+          amount_needed: amount,
+          status: 'active'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const success = await supportRequest(supportRequestData.id, amount);
+      if (success) {
+        setSupportAmount("");
+        setShowSupportDialog(false);
+        fetchProjectSupporters(); // Refresh supporters list
+        toast({
+          title: "Success",
+          description: "Project supported successfully!",
+        });
+      }
+    } catch (error) {
+      console.error('Error supporting project:', error);
+      toast({
+        title: "Error",
+        description: "Failed to support project. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -96,6 +172,7 @@ const ProjectDetailPage = ({ projectId, onBack }: ProjectDetailPageProps) => {
 
   const progress = project.funding_goal > 0 ? (project.current_funding / project.funding_goal) * 100 : 0;
   const remainingAmount = Math.max(0, project.funding_goal - project.current_funding);
+  const totalSupported = supporters.reduce((sum, supporter) => sum + supporter.amount, 0);
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -103,7 +180,7 @@ const ProjectDetailPage = ({ projectId, onBack }: ProjectDetailPageProps) => {
       <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={onBack} className="flex items-center gap-2">
           <ArrowLeft className="w-4 h-4" />
-          Back to Projects
+          Back to Support Hub
         </Button>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
@@ -195,13 +272,13 @@ const ProjectDetailPage = ({ projectId, onBack }: ProjectDetailPageProps) => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Heart className="w-5 h-5 text-red-500" />
-                Project Supporters
+                Project Supporters ({supporters.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                  <Loader2 className="w-8 h-8 animate-spin" />
                 </div>
               ) : supporters.length === 0 ? (
                 <div className="text-center py-8">
@@ -270,9 +347,51 @@ const ProjectDetailPage = ({ projectId, onBack }: ProjectDetailPageProps) => {
                   </p>
                 </div>
 
-                <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3">
-                  Support This Project
-                </Button>
+                <Dialog open={showSupportDialog} onOpenChange={setShowSupportDialog}>
+                  <DialogTrigger asChild>
+                    <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3">
+                      Support This Project
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Support {project.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Your wallet balance: ₦{wallet?.balance.toLocaleString() || '0'}</Label>
+                      </div>
+                      <div>
+                        <Label htmlFor="support_amount">Amount to Support (NGN)</Label>
+                        <Input
+                          id="support_amount"
+                          type="number"
+                          value={supportAmount}
+                          onChange={(e) => setSupportAmount(e.target.value)}
+                          placeholder="Enter amount"
+                          max={wallet?.balance || 0}
+                        />
+                      </div>
+                      <div className="flex gap-3">
+                        <Button 
+                          variant="outline" 
+                          className="flex-1"
+                          onClick={() => setShowSupportDialog(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          className="flex-1 bg-purple-600 hover:bg-purple-700"
+                          onClick={handleSupportProject}
+                          disabled={supportPaymentLoading || !supportAmount}
+                        >
+                          {supportPaymentLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                          Send Support
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
 
                 <div className="grid grid-cols-2 gap-3 text-center">
                   <div className="bg-white rounded-lg p-3">
