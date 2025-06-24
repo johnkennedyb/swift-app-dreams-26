@@ -79,9 +79,9 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
           <div className="flex items-center justify-between p-6 border-b">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">F</span>
+                <span className="text-white font-bold text-sm">A</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">FinanceApp</span>
+              <span className="text-xl font-bold text-gray-900">Abacus</span>
             </div>
             <Button
               variant="ghost"
@@ -95,31 +95,10 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
 
           {/* User Profile Section */}
           <div className="p-6 border-b">
-            <div className="flex items-center gap-3 mb-4">
-              <Avatar className="w-12 h-12">
-                <AvatarImage src={user.avatar_url || undefined} />
-                <AvatarFallback className="text-lg font-semibold">
-                  {user.first_name.charAt(0)}{user.last_name.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900">
-                  {user.first_name} {user.last_name}
-                </p>
-                <p className="text-sm text-gray-500">Active Member</p>
-              </div>
-            </div>
             <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
               <CardContent className="p-4">
                 <p className="text-purple-100 text-sm font-medium">Wallet Balance</p>
                 <p className="text-2xl font-bold">₦{wallet.balance.toLocaleString()}</p>
-                <Button 
-                  size="sm" 
-                  variant="secondary" 
-                  className="mt-2 w-full bg-white text-purple-600 hover:bg-gray-100"
-                >
-                  Add Funds
-                </Button>
               </CardContent>
             </Card>
           </div>
@@ -196,12 +175,6 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
                 <Bell className="w-5 h-5" />
                 <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
               </Button>
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={user.avatar_url || undefined} />
-                <AvatarFallback>
-                  {user.first_name.charAt(0)}{user.last_name.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
             </div>
           </div>
         </header>
