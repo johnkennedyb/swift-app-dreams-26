@@ -1,8 +1,7 @@
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { 
   LayoutDashboard, 
@@ -12,8 +11,6 @@ import {
   Settings,
   Bell,
   Search,
-  Menu,
-  X,
   Home
 } from "lucide-react";
 import { Profile } from "@/hooks/useProfile";
@@ -44,7 +41,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
   const renderContent = () => {
     switch (activeTab) {
       case "home":
-        return <HomePage user={user} wallet={wallet} />;
+        return <HomePage user={user} wallet={wallet} onNavigate={setActiveTab} />;
       case "projects":
         return <EnhancedProjectsPage />;
       case "support":
@@ -56,7 +53,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
         setActiveTab("projects");
         return <EnhancedProjectsPage />;
       default:
-        return <HomePage user={user} wallet={wallet} />;
+        return <HomePage user={user} wallet={wallet} onNavigate={setActiveTab} />;
     }
   };
 
@@ -83,14 +80,6 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
               </div>
               <span className="text-xl font-bold text-gray-900">Abacus</span>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <X className="w-5 h-5" />
-            </Button>
           </div>
 
           {/* User Profile Section */}
@@ -151,15 +140,14 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
         <header className="bg-white shadow-sm border-b sticky top-0 z-30">
           <div className="flex items-center justify-between px-4 lg:px-6 py-4">
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="lg:hidden"
-                onClick={() => setSidebarOpen(true)}
-              >
-                <Menu className="w-5 h-5" />
-              </Button>
-              <div className="hidden md:flex items-center gap-4">
+              {/* Abacus Brand - Always visible */}
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center lg:hidden">
+                  <span className="text-white font-bold text-sm">A</span>
+                </div>
+                <span className="text-xl font-bold text-gray-900">Abacus</span>
+              </div>
+              <div className="hidden md:flex items-center gap-4 ml-8">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
@@ -180,7 +168,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
         </header>
 
         {/* Page Content */}
-        <main className="p-4 lg:p-6">
+        <main className="min-h-screen">
           {renderContent()}
         </main>
       </div>

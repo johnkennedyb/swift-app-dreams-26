@@ -113,6 +113,13 @@
     width: 0px;
     background: transparent;
   }
+
+  /* Mobile viewport fix */
+  @supports (-webkit-touch-callout: none) {
+    .min-h-screen {
+      min-height: -webkit-fill-available;
+    }
+  }
 }
 
 /* Custom mobile animations */
@@ -150,4 +157,30 @@
 .touch-feedback:active {
   transform: scale(0.98);
   transition: transform 0.1s ease-in-out;
+}
+
+/* Mobile-first responsive design helpers */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Larger touch targets on mobile */
+  input, button, select, textarea {
+    min-height: 48px;
+  }
+}
+
+/* Purple theme consistency */
+.bg-primary {
+  @apply bg-purple-600;
+}
+
+.text-primary {
+  @apply text-purple-600;
+}
+
+.border-primary {
+  @apply border-purple-600;
 }
