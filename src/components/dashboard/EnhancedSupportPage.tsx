@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,7 +34,7 @@ interface ProjectMember {
     first_name: string;
     last_name: string;
     avatar_url: string | null;
-  };
+  } | null;
 }
 
 const EnhancedSupportPage = () => {
@@ -200,8 +199,9 @@ const EnhancedSupportPage = () => {
   };
 
   const filteredRequests = supportRequests.filter(request => {
-    const profileName = request.profiles ? 
-      `${request.profiles.first_name} ${request.profiles.last_name}` : 
+    const profileData = request.profiles;
+    const profileName = profileData ? 
+      `${profileData.first_name} ${profileData.last_name}` : 
       'Unknown User';
     
     return request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -209,9 +209,11 @@ const EnhancedSupportPage = () => {
       profileName.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  const filteredMembers = projectMembers.filter(member =>
-    `${member.profiles.first_name} ${member.profiles.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredMembers = projectMembers.filter(member => {
+    if (!member.profiles) return false;
+    const memberName = `${member.profiles.first_name} ${member.profiles.last_name}`;
+    return memberName.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   if (supportLoading || projectsLoading) {
     return (
@@ -325,13 +327,19 @@ const EnhancedSupportPage = () => {
                             onCheckedChange={() => handleMemberToggle(member.user_id)}
                           />
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={member.profiles.avatar_url || undefined} />
+                            <AvatarImage src={member.profiles?.avatar_url || undefined} />
                             <AvatarFallback>
-                              {member.profiles.first_name.charAt(0)}{member.profiles.last_name.charAt(0)}
+                              {member.profiles ? 
+                                `${member.profiles.first_name.charAt(0)}${member.profiles.last_name.charAt(0)}` : 
+                                'UN'
+                              }
                             </AvatarFallback>
                           </Avatar>
                           <span className="font-medium">
-                            {member.profiles.first_name} {member.profiles.last_name}
+                            {member.profiles ? 
+                              `${member.profiles.first_name} ${member.profiles.last_name}` : 
+                              'Unknown User'
+                            }
                           </span>
                         </div>
                       ))
