@@ -22,7 +22,11 @@ const Index = () => {
     );
   }
 
-  return <Auth />;
+  return (
+    <div className="min-h-screen">
+      <Auth />
+    </div>
+  );
 };
 
 export default Index;
