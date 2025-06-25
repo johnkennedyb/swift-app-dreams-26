@@ -90,7 +90,25 @@ const EnhancedSupportPage = () => {
           .eq('project_id', projectId);
 
         if (error) throw error;
-        setProjectMembers(data || []);
+        
+        // Filter out members with null profiles and log any issues
+        const validMembers = (data || []).filter(member => {
+          if (!member.profiles) {
+            console.warn(`Member ${member.user_id} has no profile data`);
+            return false;
+          }
+          return true;
+        });
+        
+        setProjectMembers(validMembers);
+        
+        if (validMembers.length < (data || []).length) {
+          toast({
+            title: "Note",
+            description: "Some project members don't have complete profile information",
+            variant: "default",
+          });
+        }
       } catch (error) {
         console.error('Error fetching project members:', error);
         toast({
@@ -314,6 +332,7 @@ const EnhancedSupportPage = () => {
                       <div className="text-center py-8 text-gray-500">
                         <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                         <p>No members found in this project</p>
+                        <p className="text-xs mt-1">Members may need to complete their profiles</p>
                       </div>
                     ) : filteredMembers.length === 0 ? (
                       <div className="text-center py-4 text-gray-500">
@@ -328,7 +347,7 @@ const EnhancedSupportPage = () => {
                           />
                           <Avatar className="w-8 h-8">
                             <AvatarImage src={member.profiles?.avatar_url || undefined} />
-                            <AvatarFallback>
+                            <AvatarFallback className="bg-purple-100 text-purple-600">
                               {member.profiles ? 
                                 `${member.profiles.first_name.charAt(0)}${member.profiles.last_name.charAt(0)}` : 
                                 'UN'
@@ -417,7 +436,7 @@ const EnhancedSupportPage = () => {
                   <div className="flex items-center gap-3 mb-2">
                     <Avatar className="w-10 h-10">
                       <AvatarImage src={profileData?.avatar_url || undefined} />
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-purple-100 text-purple-600">
                         {profileData ? 
                           `${profileData.first_name.charAt(0)}${profileData.last_name.charAt(0)}` : 
                           'UN'
@@ -428,10 +447,10 @@ const EnhancedSupportPage = () => {
                       <p className="font-medium text-gray-900">
                         {profileData ? 
                           `${profileData.first_name} ${profileData.last_name}` : 
-                          'Unknown User'
+                          'User Profile Loading...'
                         }
                       </p>
-                      <p className="text-sm text-gray-500">{request.projects.name}</p>
+                      <p className="text-sm text-gray-500">{request.projects?.name || 'Unknown Project'}</p>
                     </div>
                     <Badge variant="secondary" className="text-xs">
                       {request.status}
