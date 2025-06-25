@@ -49,7 +49,7 @@ const EnhancedProjectsPage = () => {
     const matchesFilter = activeFilter === "all" || project.status === activeFilter;
     const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          project.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         `${project.profiles.first_name} ${project.profiles.last_name}`.toLowerCase().includes(searchTerm.toLowerCase());
+                         (project.profiles ? `${project.profiles.first_name} ${project.profiles.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) : false);
     return matchesFilter && matchesSearch;
   });
 
@@ -302,15 +302,19 @@ const EnhancedProjectsPage = () => {
         ) : (
           filteredProjects.map((project) => {
             const progress = project.funding_goal > 0 ? (project.current_funding / project.funding_goal) * 100 : 0;
+            const profileData = project.profiles;
             
             return (
               <Card key={project.id} className="border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3 mb-3">
                     <Avatar className="w-12 h-12">
-                      <AvatarImage src={project.profiles.avatar_url || undefined} />
+                      <AvatarImage src={profileData?.avatar_url || undefined} />
                       <AvatarFallback className="text-lg font-semibold">
-                        {project.profiles.first_name.charAt(0)}{project.profiles.last_name.charAt(0)}
+                        {profileData ? 
+                          `${profileData.first_name.charAt(0)}${profileData.last_name.charAt(0)}` : 
+                          'UN'
+                        }
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
@@ -318,7 +322,10 @@ const EnhancedProjectsPage = () => {
                         {project.name}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        by {project.profiles.first_name} {project.profiles.last_name}
+                        by {profileData ? 
+                          `${profileData.first_name} ${profileData.last_name}` : 
+                          'Unknown User'
+                        }
                       </p>
                     </div>
                     <Badge variant={project.status === "completed" ? "default" : "secondary"}>
