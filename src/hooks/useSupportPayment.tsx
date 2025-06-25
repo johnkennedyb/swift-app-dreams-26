@@ -2,135 +2,73 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { useToast } from '@/hooks/use-toast';
 import { useWallet } from './useWallet';
 
 export const useSupportPayment = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const { refetch: refetchWallet } = useWallet();
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
+  const { wallet, refetch: refetchWallet } = useWallet();
 
-  const supportRequest = async (supportRequestId: string, amount: number) => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "Please log in to support this request",
-        variant: "destructive",
-      });
-      return;
-    }
+  const supportRequest = async (requestId: string, amount: number) => {
+    if (!user || !wallet) return false;
 
     setLoading(true);
-    console.log(`Supporting request: ${supportRequestId} with amount: ${amount}`);
-
     try {
-      // Check if user has sufficient balance
-      const { data: wallet, error: walletError } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', user.id)
-        .eq('currency', 'NGN')
-        .single();
-
-      if (walletError) throw walletError;
-
-      if (wallet.balance < amount) {
-        toast({
-          title: "Insufficient Balance",
-          description: "You don't have enough funds to support this request",
-          variant: "destructive",
-        });
-        return false;
-      }
-
       // Get support request details
       const { data: supportRequest, error: requestError } = await supabase
         .from('support_requests')
-        .select('requester_id, title')
-        .eq('id', supportRequestId)
+        .select('*, projects(*)')
+        .eq('id', requestId)
         .single();
 
       if (requestError) throw requestError;
 
-      // Create transaction record
+      // Check wallet balance
+      if (wallet.balance < amount) {
+        throw new Error('Insufficient wallet balance');
+      }
+
+      // Create transaction with project_id for better tracking
       const { error: transactionError } = await supabase
         .from('transactions')
-        .insert({
-          user_id: user.id,
-          type: 'debit',
-          amount: amount,
-          description: `Support for: ${supportRequest.title}`,
-          reference: `SUPPORT_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          recipient_id: supportRequest.requester_id,
-          status: 'completed',
-        });
+        .insert([
+          {
+            user_id: user.id,
+            type: 'debit',
+            amount: amount,
+            description: `Support for: ${supportRequest.title}`,
+            status: 'completed',
+            project_id: supportRequest.project_id,
+            recipient_id: supportRequest.requester_id,
+          }
+        ]);
 
       if (transactionError) throw transactionError;
 
-      // Update sender's wallet (debit) - direct update
-      const { error: senderWalletError } = await supabase
+      // Update wallet balance
+      const { error: walletError } = await supabase
         .from('wallets')
-        .update({
-          balance: wallet.balance - amount,
-          updated_at: new Date().toISOString(),
+        .update({ balance: wallet.balance - amount })
+        .eq('id', wallet.id);
+
+      if (walletError) throw walletError;
+
+      // Update project funding
+      const { error: projectError } = await supabase
+        .from('projects')
+        .update({ 
+          current_funding: (supportRequest.projects?.current_funding || 0) + amount 
         })
-        .eq('user_id', user.id)
-        .eq('currency', 'NGN');
+        .eq('id', supportRequest.project_id);
 
-      if (senderWalletError) throw senderWalletError;
+      if (projectError) throw projectError;
 
-      // Update recipient's wallet (credit)
-      const { data: recipientWallet, error: recipientWalletFetchError } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', supportRequest.requester_id)
-        .eq('currency', 'NGN')
-        .single();
-
-      if (recipientWalletFetchError) throw recipientWalletFetchError;
-
-      const { error: recipientWalletError } = await supabase
-        .from('wallets')
-        .update({
-          balance: recipientWallet.balance + amount,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', supportRequest.requester_id)
-        .eq('currency', 'NGN');
-
-      if (recipientWalletError) throw recipientWalletError;
-
-      // Create transaction for recipient
-      const { error: recipientTransactionError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: supportRequest.requester_id,
-          type: 'credit',
-          amount: amount,
-          description: `Support received for: ${supportRequest.title}`,
-          reference: `SUPPORT_REC_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          recipient_id: user.id,
-          status: 'completed',
-        });
-
-      if (recipientTransactionError) throw recipientTransactionError;
-
-      toast({
-        title: "Support Sent",
-        description: `₦${amount.toLocaleString()} has been sent successfully`,
-      });
-
+      // Refresh wallet data
       refetchWallet();
+      
       return true;
-
-    } catch (error: any) {
-      console.error('Support payment error:', error);
-      toast({
-        title: "Support Error",
-        description: error.message || "Failed to process support payment",
-        variant: "destructive",
-      });
+    } catch (error) {
+      console.error('Error supporting request:', error);
       return false;
     } finally {
       setLoading(false);
