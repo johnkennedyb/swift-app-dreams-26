@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -198,11 +199,15 @@ const EnhancedSupportPage = () => {
     }
   };
 
-  const filteredRequests = supportRequests.filter(request =>
-    request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    request.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    `${request.profiles.first_name} ${request.profiles.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRequests = supportRequests.filter(request => {
+    const profileName = request.profiles ? 
+      `${request.profiles.first_name} ${request.profiles.last_name}` : 
+      'Unknown User';
+    
+    return request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      profileName.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   const filteredMembers = projectMembers.filter(member =>
     `${member.profiles.first_name} ${member.profiles.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -395,70 +400,80 @@ const EnhancedSupportPage = () => {
             </Card>
           </div>
         ) : (
-          filteredRequests.map((request) => (
-            <Card key={request.id} className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3 mb-2">
-                  <Avatar className="w-10 h-10">
-                    <AvatarImage src={request.profiles.avatar_url || undefined} />
-                    <AvatarFallback>
-                      {request.profiles.first_name.charAt(0)}{request.profiles.last_name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">
-                      {request.profiles.first_name} {request.profiles.last_name}
-                    </p>
-                    <p className="text-sm text-gray-500">{request.projects.name}</p>
+          filteredRequests.map((request) => {
+            const profileData = request.profiles;
+            
+            return (
+              <Card key={request.id} className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Avatar className="w-10 h-10">
+                      <AvatarImage src={profileData?.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {profileData ? 
+                          `${profileData.first_name.charAt(0)}${profileData.last_name.charAt(0)}` : 
+                          'UN'
+                        }
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">
+                        {profileData ? 
+                          `${profileData.first_name} ${profileData.last_name}` : 
+                          'Unknown User'
+                        }
+                      </p>
+                      <p className="text-sm text-gray-500">{request.projects.name}</p>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      {request.status}
+                    </Badge>
                   </div>
-                  <Badge variant="secondary" className="text-xs">
-                    {request.status}
-                  </Badge>
-                </div>
-                <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
-                  {request.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                  {request.description}
-                </p>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Amount Needed</p>
-                    <p className="text-xl font-bold text-purple-600">
-                      ₦{request.amount_needed.toLocaleString()}
-                    </p>
+                  <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
+                    {request.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                    {request.description}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Amount Needed</p>
+                      <p className="text-xl font-bold text-purple-600">
+                        ₦{request.amount_needed.toLocaleString()}
+                      </p>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      className="bg-purple-600 hover:bg-purple-700"
+                      onClick={() => handleSupportClick(request.id)}
+                    >
+                      Support
+                    </Button>
                   </div>
-                  <Button 
-                    size="sm" 
-                    className="bg-purple-600 hover:bg-purple-700"
-                    onClick={() => handleSupportClick(request.id)}
-                  >
-                    Support
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                  <span className="text-xs text-gray-500">
-                    {new Date(request.created_at).toLocaleDateString()}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-purple-600 hover:text-purple-700"
-                    onClick={() => {
-                      const project = projects.find(p => p.id === request.project_id);
-                      if (project) {
-                        setSelectedProjectId(project.id);
-                      }
-                    }}
-                  >
-                    View Project
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                    <span className="text-xs text-gray-500">
+                      {new Date(request.created_at).toLocaleDateString()}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-purple-600 hover:text-purple-700"
+                      onClick={() => {
+                        const project = projects.find(p => p.id === request.project_id);
+                        if (project) {
+                          setSelectedProjectId(project.id);
+                        }
+                      }}
+                    >
+                      View Project
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
 
