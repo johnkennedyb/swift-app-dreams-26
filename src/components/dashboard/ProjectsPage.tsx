@@ -21,10 +21,12 @@ import {
 } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useAuth } from "@/hooks/useAuth";
 
 const ProjectsPage = () => {
   const { projects, loading: projectsLoading, createProject, joinProject } = useProjects();
   const { transactions, loading: transactionsLoading } = useTransactions();
+  const { user } = useAuth();
   const { toast } = useToast();
   
   const [activeFilter, setActiveFilter] = useState("all");
@@ -47,7 +49,7 @@ const ProjectsPage = () => {
     if (activeFilter === "all") return true;
     if (activeFilter === "active") return project.status === "active";
     if (activeFilter === "completed") return project.status === "completed";
-    if (activeFilter === "my-projects") return project.admin_id === projects[0]?.admin_id; // This would need proper user context
+    if (activeFilter === "my-projects") return project.admin_id === user?.id;
     return true;
   });
 
@@ -228,11 +230,21 @@ const ProjectsPage = () => {
       <div className="space-y-4">
         {filteredProjects.length === 0 ? (
           <Card className="p-8 text-center">
-            <p className="text-gray-500">No projects found</p>
+            <p className="text-gray-500">
+              {activeFilter === "my-projects" 
+                ? "You haven't created any projects yet" 
+                : "No projects found"}
+            </p>
+            {activeFilter === "my-projects" && (
+              <p className="text-sm text-gray-400 mt-2">
+                Create a new project to get started
+              </p>
+            )}
           </Card>
         ) : (
           filteredProjects.map((project) => {
             const progress = project.funding_goal > 0 ? (project.current_funding / project.funding_goal) * 100 : 0;
+            const isProjectAdmin = project.admin_id === user?.id;
             
             return (
               <Card key={project.id} className="p-4">
@@ -248,6 +260,11 @@ const ProjectsPage = () => {
                       <h3 className="font-semibold text-gray-900">{project.name}</h3>
                       <p className="text-sm text-gray-600">
                         By {project.profiles.first_name} {project.profiles.last_name}
+                        {isProjectAdmin && (
+                          <Badge variant="outline" className="ml-2 text-xs">
+                            Admin
+                          </Badge>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -288,13 +305,15 @@ const ProjectsPage = () => {
                   <span className="text-gray-600">
                     {project.project_members.length} members
                   </span>
-                  <Button 
-                    size="sm" 
-                    className="bg-purple-600 hover:bg-purple-700"
-                    onClick={() => handleJoinProject(project.id)}
-                  >
-                    Support
-                  </Button>
+                  {!isProjectAdmin && (
+                    <Button 
+                      size="sm" 
+                      className="bg-purple-600 hover:bg-purple-700"
+                      onClick={() => handleJoinProject(project.id)}
+                    >
+                      Support
+                    </Button>
+                  )}
                 </div>
               </Card>
             );
