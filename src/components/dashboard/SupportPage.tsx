@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +25,7 @@ import { useSupportComments } from "@/hooks/useSupportComments";
 import { useProjects } from "@/hooks/useProjects";
 import { useSupportPayment } from "@/hooks/useSupportPayment";
 import { useWallet } from "@/hooks/useWallet";
+import ShareableSupportLink from "../ShareableSupportLink";
 
 const SupportPage = () => {
   const { supportRequests, loading: supportLoading, createSupportRequest } = useSupportRequests();
@@ -45,6 +45,8 @@ const SupportPage = () => {
     amount_needed: ""
   });
   const [isCreating, setIsCreating] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [createdRequestId, setCreatedRequestId] = useState<string | null>(null);
 
   const { comments, loading: commentsLoading, addComment } = useSupportComments(selectedRequest);
 
@@ -61,7 +63,7 @@ const SupportPage = () => {
     }
 
     setIsCreating(true);
-    const { error } = await createSupportRequest({
+    const { data, error } = await createSupportRequest({
       project_id: formData.project_id,
       title: formData.title,
       description: formData.description,
@@ -81,6 +83,12 @@ const SupportPage = () => {
       });
       setShowCreateDialog(false);
       setFormData({ project_id: "", title: "", description: "", amount_needed: "" });
+      
+      // Show sharing dialog with the created request
+      if (data) {
+        setCreatedRequestId(data.id);
+        setShowShareDialog(true);
+      }
     }
     setIsCreating(false);
   };
@@ -325,6 +333,24 @@ const SupportPage = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Share Dialog */}
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Share Your Support Request</DialogTitle>
+          </DialogHeader>
+          {createdRequestId && (
+            <ShareableSupportLink
+              supportRequestId={createdRequestId}
+              title={formData.title}
+              description={formData.description}
+              amountNeeded={parseFloat(formData.amount_needed) || 0}
+              requesterName="You"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Available Support Requests */}
       <div className="space-y-4">
