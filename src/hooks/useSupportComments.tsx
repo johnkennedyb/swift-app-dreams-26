@@ -22,6 +22,7 @@ export const useSupportComments = (supportRequestId: string | null) => {
     if (!supportRequestId) return;
 
     try {
+      console.log('Fetching comments for support request:', supportRequestId);
       const { data, error } = await supabase
         .from('support_comments')
         .select(`
@@ -35,30 +36,45 @@ export const useSupportComments = (supportRequestId: string | null) => {
         .eq('support_request_id', supportRequestId)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching comments:', error);
+        throw error;
+      }
+      
+      console.log('Fetched comments:', data);
       setComments(data || []);
     } catch (error) {
       console.error('Error fetching comments:', error);
+      setComments([]);
     } finally {
       setLoading(false);
     }
   };
 
   const addComment = async (comment: string) => {
-    if (!supportRequestId) return { error: 'No support request ID' };
+    if (!supportRequestId || !user) {
+      return { error: new Error('Missing support request ID or user') };
+    }
 
     try {
+      console.log('Adding comment:', comment, 'to support request:', supportRequestId);
+      
       const { error } = await supabase
         .from('support_comments')
         .insert([
           {
             support_request_id: supportRequestId,
-            user_id: user?.id,
+            user_id: user.id,
             comment,
           }
         ]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error adding comment:', error);
+        throw error;
+      }
+
+      console.log('Comment added successfully');
       fetchComments();
       return { error: null };
     } catch (error) {

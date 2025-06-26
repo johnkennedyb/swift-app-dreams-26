@@ -41,6 +41,7 @@ export const useProjects = () => {
 
   const fetchProjects = async () => {
     try {
+      console.log('Fetching projects for user:', user?.id);
       const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -58,10 +59,16 @@ export const useProjects = () => {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching projects:', error);
+        throw error;
+      }
+      
+      console.log('Fetched projects:', data);
       setProjects(data || []);
     } catch (error) {
       console.error('Error fetching projects:', error);
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -72,29 +79,47 @@ export const useProjects = () => {
     description: string;
     funding_goal: number;
   }) => {
+    if (!user) {
+      console.error('No user found');
+      return { data: null, error: new Error('User not authenticated') };
+    }
+
     try {
+      console.log('Creating project with data:', projectData);
+      console.log('Current user ID:', user.id);
+
       const { data, error } = await supabase
         .from('projects')
         .insert([
           {
             ...projectData,
-            admin_id: user?.id,
+            admin_id: user.id,
           }
         ])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating project:', error);
+        throw error;
+      }
 
-      // Join the project as a member
-      await supabase
+      console.log('Project created successfully:', data);
+
+      // Automatically join the project as a member
+      const { error: memberError } = await supabase
         .from('project_members')
         .insert([
           {
             project_id: data.id,
-            user_id: user?.id,
+            user_id: user.id,
           }
         ]);
+
+      if (memberError) {
+        console.error('Error joining project as member:', memberError);
+        // Don't throw here as the project was created successfully
+      }
 
       fetchProjects();
       return { data, error: null };
@@ -105,17 +130,41 @@ export const useProjects = () => {
   };
 
   const joinProject = async (projectId: string) => {
+    if (!user) {
+      return { error: new Error('User not authenticated') };
+    }
+
     try {
+      console.log('Joining project:', projectId, 'as user:', user.id);
+
+      // Check if user is already a member
+      const { data: existingMember } = await supabase
+        .from('project_members')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (existingMember) {
+        console.log('User is already a member of this project');
+        return { error: new Error('Already a member of this project') };
+      }
+
       const { error } = await supabase
         .from('project_members')
         .insert([
           {
             project_id: projectId,
-            user_id: user?.id,
+            user_id: user.id,
           }
         ]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error joining project:', error);
+        throw error;
+      }
+
+      console.log('Successfully joined project');
       fetchProjects();
       return { error: null };
     } catch (error) {

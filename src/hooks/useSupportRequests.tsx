@@ -53,6 +53,7 @@ export const useSupportRequests = () => {
 
   const fetchSupportRequests = async () => {
     try {
+      console.log('Fetching support requests for user:', user?.id);
       const { data, error } = await supabase
         .from('support_requests')
         .select(`
@@ -69,10 +70,16 @@ export const useSupportRequests = () => {
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching support requests:', error);
+        throw error;
+      }
+      
+      console.log('Fetched support requests:', data);
       setSupportRequests(data || []);
     } catch (error) {
       console.error('Error fetching support requests:', error);
+      setSupportRequests([]);
     } finally {
       setLoading(false);
     }
@@ -85,19 +92,32 @@ export const useSupportRequests = () => {
     amount_needed: number;
     media_url?: string;
   }) => {
+    if (!user) {
+      console.error('No user found');
+      return { data: null, error: new Error('User not authenticated') };
+    }
+
     try {
+      console.log('Creating support request with data:', requestData);
+      console.log('Current user ID:', user.id);
+
       const { data, error } = await supabase
         .from('support_requests')
         .insert([
           {
             ...requestData,
-            requester_id: user?.id,
+            requester_id: user.id,
           }
         ])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating support request:', error);
+        throw error;
+      }
+
+      console.log('Support request created successfully:', data);
       fetchSupportRequests();
       return { data, error: null };
     } catch (error) {
