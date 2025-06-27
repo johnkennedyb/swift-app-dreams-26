@@ -20,7 +20,8 @@ import {
   Loader2,
   ArrowLeft,
   Share2,
-  ExternalLink
+  ExternalLink,
+  Copy
 } from "lucide-react";
 import { useSupportRequests } from "@/hooks/useSupportRequests";
 import { useSupportComments } from "@/hooks/useSupportComments";
@@ -53,6 +54,24 @@ const SupportPage = () => {
   const { comments, loading: commentsLoading, addComment } = useSupportComments(selectedRequest);
 
   const selectedSupportRequest = supportRequests.find(req => req.id === selectedRequest);
+
+  // Function to copy link directly to clipboard
+  const handleCopyLink = async (requestId: string, title: string) => {
+    const shareableUrl = `${window.location.origin}/support/${requestId}`;
+    try {
+      await navigator.clipboard.writeText(shareableUrl);
+      toast({
+        title: "Link Copied!",
+        description: `Support link for "${title}" has been copied to clipboard`,
+      });
+    } catch (error) {
+      toast({
+        title: "Copy Failed",
+        description: "Could not copy link to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleCreateRequest = async () => {
     if (!formData.project_id || !formData.title || !formData.description || !formData.amount_needed) {
@@ -421,11 +440,19 @@ const SupportPage = () => {
                 <div className="flex gap-2">
                   <Button 
                     variant="outline"
+                    onClick={() => handleCopyLink(request.id, request.title)}
+                    className="text-green-600 border-green-600 hover:bg-green-50"
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Link
+                  </Button>
+                  <Button 
+                    variant="outline"
                     onClick={() => handleShareRequest(request)}
                     className="text-purple-600 border-purple-600 hover:bg-purple-50"
                   >
                     <Share2 className="w-4 h-4 mr-2" />
-                    Share Link
+                    Share Options
                   </Button>
                   <Button 
                     className="bg-purple-600 hover:bg-purple-700"
