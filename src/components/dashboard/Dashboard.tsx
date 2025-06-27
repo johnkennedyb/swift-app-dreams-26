@@ -19,6 +19,7 @@ import HomePage from "./HomePage";
 import EnhancedProjectsPage from "./EnhancedProjectsPage";
 import EnhancedSupportPage from "./EnhancedSupportPage";
 import ProfilePage from "./ProfilePage";
+import SupportPage from "./SupportPage";
 import BottomNavigation from "./BottomNavigation";
 
 interface DashboardProps {
@@ -45,7 +46,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
       case "projects":
         return <EnhancedProjectsPage />;
       case "support":
-        return <EnhancedSupportPage />;
+        return <SupportPage />;
       case "profile":
         return <ProfilePage user={user} wallet={wallet} onSignOut={onSignOut} />;
       case "create":
@@ -78,7 +79,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
               <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">A</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">Abacus</span>
+              <span className="text-xl font-bold text-gray-900">Appacus</span>
             </div>
           </div>
 
@@ -145,7 +146,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
                 <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center lg:hidden">
                   <span className="text-white font-bold text-sm">A</span>
                 </div>
-                <span className="text-xl font-bold text-gray-900">Abacus</span>
+                <span className="text-xl font-bold text-gray-900">Appacus</span>
               </div>
               <div className="hidden md:flex items-center gap-4 ml-8">
                 <div className="relative">

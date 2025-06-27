@@ -306,167 +306,179 @@ const SupportPage = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Support Requests</h1>
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger asChild>
-            <Button className="bg-purple-600 hover:bg-purple-700">
-              Ask for Support
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Support Request</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="project_id">Project</Label>
-                <Select value={formData.project_id} onValueChange={(value) => 
-                  setFormData(prev => ({ ...prev, project_id: value }))
-                }>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a project" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Support request title"
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Describe what you need support for"
-                />
-              </div>
-              <div>
-                <Label htmlFor="amount_needed">Amount Needed (NGN)</Label>
-                <Input
-                  id="amount_needed"
-                  type="number"
-                  value={formData.amount_needed}
-                  onChange={(e) => setFormData(prev => ({ ...prev, amount_needed: e.target.value }))}
-                  placeholder="0.00"
-                />
-              </div>
-              <Button 
-                onClick={handleCreateRequest} 
-                className="w-full bg-purple-600 hover:bg-purple-700"
-                disabled={isCreating}
-              >
-                {isCreating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Create Request & Get Shareable Link
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Share Dialog */}
-      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div className="space-y-8">
+    {/* Header + Create Button */}
+    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <h1 className="text-2xl font-bold text-gray-900">Support Requests</h1>
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogTrigger asChild>
+          <Button className="bg-purple-600 hover:bg-purple-700">
+            Ask for Support
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-purple-600 flex items-center gap-2">
-              <Share2 className="w-6 h-6" />
-              Share Your Support Request
-            </DialogTitle>
+            <DialogTitle>Create Support Request</DialogTitle>
           </DialogHeader>
-          {selectedShareRequest && (
-            <ShareableSupportLink
-              supportRequestId={selectedShareRequest.id}
-              title={selectedShareRequest.title}
-              description={selectedShareRequest.description}
-              amountNeeded={selectedShareRequest.amount_needed}
-              requesterName={`${selectedShareRequest.profiles.first_name} ${selectedShareRequest.profiles.last_name}`.trim() || "You"}
-            />
-          )}
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="project_id">Project</Label>
+              <Select
+                id="project_id"
+                value={formData.project_id}
+                onValueChange={(value) =>
+                  setFormData(prev => ({ ...prev, project_id: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map(p => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Support request title"
+              />
+            </div>
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Describe what you need support for"
+              />
+            </div>
+            <div>
+              <Label htmlFor="amount_needed">Amount Needed (NGN)</Label>
+              <Input
+                id="amount_needed"
+                type="number"
+                value={formData.amount_needed}
+                onChange={e => setFormData(prev => ({ ...prev, amount_needed: e.target.value }))}
+                placeholder="0.00"
+              />
+            </div>
+            <Button
+              onClick={handleCreateRequest}
+              className="w-full bg-purple-600 hover:bg-purple-700"
+              disabled={isCreating}
+            >
+              {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Create Request & Get Link
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
-
-      {/* Available Support Requests */}
-      <div className="space-y-4">
-        {supportRequests.length === 0 ? (
-          <Card className="p-8 text-center">
-            <Share2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Support Requests Yet</h3>
-            <p className="text-gray-500 mb-4">Create your first support request and get a shareable Paystack link!</p>
-            <Button 
-              onClick={() => setShowCreateDialog(true)}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              Create Support Request
-            </Button>
-          </Card>
-        ) : (
-          supportRequests.map((request) => (
-            <Card key={request.id} className="p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <Avatar className="w-12 h-12">
-                    <AvatarImage src={request.profiles.avatar_url || undefined} />
-                    <AvatarFallback>
-                      {request.profiles.first_name.charAt(0)}{request.profiles.last_name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{request.title}</h3>
-                    <p className="text-sm text-gray-600">
-                      By {request.profiles.first_name} {request.profiles.last_name}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Project: {request.projects.name}
-                    </p>
-                    <p className="text-lg font-bold text-purple-600 mt-1">
-                      ₦{request.amount_needed.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline"
-                    onClick={() => handleCopyLink(request.id, request.title)}
-                    className="text-green-600 border-green-600 hover:bg-green-50"
-                  >
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copy Link
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => handleShareRequest(request)}
-                    className="text-purple-600 border-purple-600 hover:bg-purple-50"
-                  >
-                    <Share2 className="w-4 h-4 mr-2" />
-                    Share Options
-                  </Button>
-                  <Button 
-                    className="bg-purple-600 hover:bg-purple-700"
-                    onClick={() => setSelectedRequest(request.id)}
-                  >
-                    View Details
-                  </Button>
+    </div>
+  
+    {/* Share Dialog */}
+    <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold text-purple-600 flex items-center gap-2">
+            <Share2 className="w-6 h-6" />
+            Share Your Support Request
+          </DialogTitle>
+        </DialogHeader>
+        {selectedShareRequest && (
+          <ShareableSupportLink
+            supportRequestId={selectedShareRequest.id}
+            title={selectedShareRequest.title}
+            description={selectedShareRequest.description}
+            amountNeeded={selectedShareRequest.amount_needed}
+            requesterName={
+              `${selectedShareRequest.profiles.first_name} ${selectedShareRequest.profiles.last_name}`.trim() ||
+              "You"
+            }
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  
+    {/* Support Requests List */}
+    {supportRequests.length === 0 ? (
+      <Card className="p-8 text-center">
+        <Share2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Support Requests Yet</h3>
+        <p className="text-gray-500 mb-4">
+          Create your first support request and get a shareable Paystack link!
+        </p>
+        <Button
+          onClick={() => setShowCreateDialog(true)}
+          className="bg-purple-600 hover:bg-purple-700"
+        >
+          Create Support Request
+        </Button>
+      </Card>
+    ) : (
+      <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        {supportRequests.map(request => (
+          <Card key={request.id} className="p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-4">
+                <Avatar className="w-12 h-12">
+                  <AvatarImage src={request.profiles.avatar_url || undefined} />
+                  <AvatarFallback>
+                    {request.profiles.first_name.charAt(0)}
+                    {request.profiles.last_name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="font-semibold text-gray-900">{request.title}</h3>
+                  <p className="text-sm text-gray-600">
+                    By {request.profiles.first_name} {request.profiles.last_name}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Project: {request.projects.name}
+                  </p>
+                  <p className="text-lg font-bold text-purple-600 mt-1">
+                    ₦{request.amount_needed.toLocaleString()}
+                  </p>
                 </div>
               </div>
-            </Card>
-          ))
-        )}
+              <div className="flex flex-col space-y-2">
+                <Button
+                  variant="outline"
+                  onClick={() => handleCopyLink(request.id, request.title)}
+                  className="text-green-600 border-green-600 hover:bg-green-50"
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy Link
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleShareRequest(request)}
+                  className="text-purple-600 border-purple-600 hover:bg-purple-50"
+                >
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Share
+                </Button>
+                <Button
+                  className="bg-purple-600 hover:bg-purple-700"
+                  onClick={() => setSelectedRequest(request.id)}
+                >
+                  View Details
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))}
       </div>
-    </div>
+    )}
+  </div>
+  
   );
 };
 
