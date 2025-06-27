@@ -11,6 +11,7 @@ interface InitializePaymentRequest {
   amount: number;
   currency?: string;
   reference?: string;
+  callback_url?: string;
   metadata?: Record<string, any>;
 }
 
@@ -20,9 +21,9 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, amount, currency, reference, metadata }: InitializePaymentRequest = await req.json();
+    const { email, amount, currency, reference, callback_url, metadata }: InitializePaymentRequest = await req.json();
 
-    console.log('Initializing Paystack payment:', { email, amount, currency, reference });
+    console.log('Initializing Paystack payment:', { email, amount, currency, reference, callback_url });
 
     // Get Paystack secret key from environment
     const paystackSecretKey = Deno.env.get('PAYSTACK_SECRET_KEY');
@@ -42,19 +43,26 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Initialize payment with Paystack
+    const paymentPayload: any = {
+      email,
+      amount,
+      currency: currency || 'NGN',
+      reference,
+      metadata,
+    };
+
+    // Add callback URL if provided
+    if (callback_url) {
+      paymentPayload.callback_url = callback_url;
+    }
+
     const paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${paystackSecretKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        email,
-        amount,
-        currency: currency || 'NGN',
-        reference,
-        metadata,
-      }),
+      body: JSON.stringify(paymentPayload),
     });
 
     const paymentData = await paystackResponse.json();

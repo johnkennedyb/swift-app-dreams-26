@@ -199,6 +199,50 @@ export type Database = {
           },
         ]
       }
+      support_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          donor_email: string
+          donor_name: string
+          id: string
+          payment_status: string
+          paystack_reference: string
+          support_request_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          donor_email: string
+          donor_name: string
+          id?: string
+          payment_status?: string
+          paystack_reference: string
+          support_request_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          donor_email?: string
+          donor_name?: string
+          id?: string
+          payment_status?: string
+          paystack_reference?: string
+          support_request_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_payments_support_request_id_fkey"
+            columns: ["support_request_id"]
+            isOneToOne: false
+            referencedRelation: "support_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_requests: {
         Row: {
           amount_needed: number

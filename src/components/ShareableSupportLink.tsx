@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Share2, ExternalLink } from "lucide-react";
+import { Copy, Share2, ExternalLink, Users, Eye, TrendingUp } from "lucide-react";
+import { useSupportPayments } from "@/hooks/useSupportPayments";
 
 interface ShareableSupportLinkProps {
   supportRequestId: string;
@@ -24,6 +25,9 @@ const ShareableSupportLink = ({
 }: ShareableSupportLinkProps) => {
   const { toast } = useToast();
   const [isSharing, setIsSharing] = useState(false);
+  const [showPayments, setShowPayments] = useState(false);
+
+  const { payments, loading: paymentsLoading, totalAmount } = useSupportPayments(supportRequestId);
 
   // Generate the shareable link
   const shareableUrl = `${window.location.origin}/support/${supportRequestId}`;
@@ -99,6 +103,26 @@ const ShareableSupportLink = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Statistics */}
+        {totalAmount > 0 && (
+          <div className="grid grid-cols-2 gap-4 p-4 bg-green-50 rounded-lg">
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <TrendingUp className="w-4 h-4 text-green-600" />
+                <span className="text-sm font-medium text-green-700">Total Raised</span>
+              </div>
+              <p className="text-lg font-bold text-green-800">₦{totalAmount.toLocaleString()}</p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <Users className="w-4 h-4 text-green-600" />
+                <span className="text-sm font-medium text-green-700">Supporters</span>
+              </div>
+              <p className="text-lg font-bold text-green-800">{payments.length}</p>
+            </div>
+          </div>
+        )}
+
         <div>
           <label className="text-sm font-medium text-gray-700 mb-2 block">
             Shareable Link
@@ -176,10 +200,68 @@ const ShareableSupportLink = ({
           </div>
         </div>
 
+        {/* Payments Table */}
+        {payments.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium text-gray-700">
+                Recent Supporters
+              </label>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPayments(!showPayments)}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                {showPayments ? 'Hide' : 'View All'}
+              </Button>
+            </div>
+            
+            {showPayments && (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="max-h-64 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="text-left p-3 font-medium">Supporter</th>
+                        <th className="text-left p-3 font-medium">Amount</th>
+                        <th className="text-left p-3 font-medium">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map((payment) => (
+                        <tr key={payment.id} className="border-t">
+                          <td className="p-3">
+                            <div>
+                              <p className="font-medium">{payment.donor_name}</p>
+                              <p className="text-xs text-gray-500">{payment.donor_email}</p>
+                            </div>
+                          </td>
+                          <td className="p-3 font-semibold text-green-600">
+                            ₦{Number(payment.amount).toLocaleString()}
+                          </td>
+                          <td className="p-3 text-gray-600">
+                            {new Date(payment.created_at).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="p-3 bg-gray-50 rounded-lg">
           <p className="text-sm text-gray-600">
             <strong>Preview:</strong> Help support "{title}" by {requesterName}. 
             Amount needed: ₦{amountNeeded.toLocaleString()}
+            {totalAmount > 0 && (
+              <span className="text-green-600 font-medium">
+                {' '}• ₦{totalAmount.toLocaleString()} raised so far
+              </span>
+            )}
           </p>
         </div>
       </CardContent>

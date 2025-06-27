@@ -1,10 +1,10 @@
-
 // Enhanced Paystack service with proper secret key handling
 export interface PaystackPayloadData {
   email: string;
   amount: number;
   currency?: string;
   reference?: string;
+  callback_url?: string;
   metadata?: Record<string, any>;
 }
 
@@ -72,6 +72,7 @@ export const initializePayment = async (payload: PaystackPayloadData): Promise<P
         amount: Math.round(payload.amount * 100), // Convert to kobo and ensure integer
         currency: payload.currency || 'NGN',
         reference: payload.reference || `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        callback_url: payload.callback_url,
       },
     });
 
