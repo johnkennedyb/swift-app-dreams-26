@@ -62,7 +62,7 @@ const HomePage = ({ user, wallet, onNavigate }: HomePageProps) => {
         {/* Welcome Header */}
         <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-600 rounded-2xl p-6 text-white">
           <div className="mb-4">
-            <h1 className="text-2xl font-bold">Welcome to Abacus!</h1>
+            <h1 className="text-2xl font-bold">Welcome to Appacus!</h1>
             <p className="text-purple-100">Your financial support platform</p>
           </div>
         </div>

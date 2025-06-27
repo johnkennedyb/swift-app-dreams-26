@@ -73,7 +73,7 @@ const Auth = () => {
               <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
                 <span className="text-purple-600 font-bold text-xl">A</span>
               </div>
-              <span className="text-white text-2xl font-bold">AppBacus</span>
+              <span className="text-white text-2xl font-bold">Appacus</span>
             </div>
             <p className="text-gray-300">Digital Finance Platform</p>
           </div>
