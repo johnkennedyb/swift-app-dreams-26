@@ -18,7 +18,9 @@ import {
   Play,
   Image as ImageIcon,
   Loader2,
-  ArrowLeft
+  ArrowLeft,
+  Share2,
+  ExternalLink
 } from "lucide-react";
 import { useSupportRequests } from "@/hooks/useSupportRequests";
 import { useSupportComments } from "@/hooks/useSupportComments";
@@ -46,7 +48,7 @@ const SupportPage = () => {
   });
   const [isCreating, setIsCreating] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
-  const [createdRequestId, setCreatedRequestId] = useState<string | null>(null);
+  const [selectedShareRequest, setSelectedShareRequest] = useState<any>(null);
 
   const { comments, loading: commentsLoading, addComment } = useSupportComments(selectedRequest);
 
@@ -79,18 +81,34 @@ const SupportPage = () => {
     } else {
       toast({
         title: "Success",
-        description: "Support request created successfully",
+        description: "Support request created successfully! Share your link to get support.",
       });
       setShowCreateDialog(false);
-      setFormData({ project_id: "", title: "", description: "", amount_needed: "" });
       
-      // Show sharing dialog with the created request
+      // Show sharing dialog with the created request data
       if (data) {
-        setCreatedRequestId(data.id);
+        const requestData = {
+          id: data.id,
+          title: formData.title,
+          description: formData.description,
+          amount_needed: parseFloat(formData.amount_needed),
+          profiles: {
+            first_name: "You",
+            last_name: ""
+          }
+        };
+        setSelectedShareRequest(requestData);
         setShowShareDialog(true);
       }
+      
+      setFormData({ project_id: "", title: "", description: "", amount_needed: "" });
     }
     setIsCreating(false);
+  };
+
+  const handleShareRequest = (request: any) => {
+    setSelectedShareRequest(request);
+    setShowShareDialog(true);
   };
 
   const handleAddComment = async () => {
@@ -141,7 +159,14 @@ const SupportPage = () => {
           Back
         </Button>
         <h1 className="text-xl font-bold text-purple-600">{request.title}</h1>
-        <div></div>
+        <Button 
+          variant="outline" 
+          onClick={() => handleShareRequest(request)}
+          className="text-purple-600 border-purple-600 hover:bg-purple-50"
+        >
+          <Share2 className="w-4 h-4 mr-2" />
+          Share
+        </Button>
       </div>
 
       <Card className="p-6">
@@ -327,7 +352,7 @@ const SupportPage = () => {
                 disabled={isCreating}
               >
                 {isCreating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Create Request
+                Create Request & Get Shareable Link
               </Button>
             </div>
           </DialogContent>
@@ -336,17 +361,20 @@ const SupportPage = () => {
 
       {/* Share Dialog */}
       <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Share Your Support Request</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-purple-600 flex items-center gap-2">
+              <Share2 className="w-6 h-6" />
+              Share Your Support Request
+            </DialogTitle>
           </DialogHeader>
-          {createdRequestId && (
+          {selectedShareRequest && (
             <ShareableSupportLink
-              supportRequestId={createdRequestId}
-              title={formData.title}
-              description={formData.description}
-              amountNeeded={parseFloat(formData.amount_needed) || 0}
-              requesterName="You"
+              supportRequestId={selectedShareRequest.id}
+              title={selectedShareRequest.title}
+              description={selectedShareRequest.description}
+              amountNeeded={selectedShareRequest.amount_needed}
+              requesterName={`${selectedShareRequest.profiles.first_name} ${selectedShareRequest.profiles.last_name}`.trim() || "You"}
             />
           )}
         </DialogContent>
@@ -356,11 +384,19 @@ const SupportPage = () => {
       <div className="space-y-4">
         {supportRequests.length === 0 ? (
           <Card className="p-8 text-center">
-            <p className="text-gray-500">No support requests found</p>
+            <Share2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Support Requests Yet</h3>
+            <p className="text-gray-500 mb-4">Create your first support request and get a shareable Paystack link!</p>
+            <Button 
+              onClick={() => setShowCreateDialog(true)}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              Create Support Request
+            </Button>
           </Card>
         ) : (
           supportRequests.map((request) => (
-            <Card key={request.id} className="p-4 cursor-pointer hover:shadow-md transition-shadow">
+            <Card key={request.id} className="p-4 hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <Avatar className="w-12 h-12">
@@ -382,12 +418,22 @@ const SupportPage = () => {
                     </p>
                   </div>
                 </div>
-                <Button 
-                  className="bg-purple-600 hover:bg-purple-700"
-                  onClick={() => setSelectedRequest(request.id)}
-                >
-                  View Details
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => handleShareRequest(request)}
+                    className="text-purple-600 border-purple-600 hover:bg-purple-50"
+                  >
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Share Link
+                  </Button>
+                  <Button 
+                    className="bg-purple-600 hover:bg-purple-700"
+                    onClick={() => setSelectedRequest(request.id)}
+                  >
+                    View Details
+                  </Button>
+                </div>
               </div>
             </Card>
           ))
