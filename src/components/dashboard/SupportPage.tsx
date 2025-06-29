@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -324,7 +325,6 @@ const SupportPage = () => {
             <div>
               <Label htmlFor="project_id">Project</Label>
               <Select
-                id="project_id"
                 value={formData.project_id}
                 onValueChange={(value) =>
                   setFormData(prev => ({ ...prev, project_id: value }))
