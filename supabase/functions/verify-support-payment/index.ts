@@ -22,12 +22,7 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
     const { reference, support_request_id, donor_name, donor_email }: VerifySupportPaymentRequest = await req.json();
@@ -75,6 +70,26 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Get support request details
+    const { data: supportRequest, error: supportError } = await supabaseClient
+      .from('support_requests')
+      .select('requester_id, project_id, title')
+      .eq('id', support_request_id)
+      .single();
+
+    if (supportError || !supportRequest) {
+      console.error('Support request not found:', supportError);
+      return new Response(
+        JSON.stringify({ error: 'Support request not found' }),
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    console.log('Support request found:', supportRequest);
+
     // Create support payment record
     const { data: paymentRecord, error: paymentError } = await supabaseClient
       .from('support_payments')
@@ -100,37 +115,77 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get support request details to update requester's wallet
-    const { data: supportRequest, error: supportError } = await supabaseClient
-      .from('support_requests')
-      .select('requester_id')
-      .eq('id', support_request_id)
+    console.log('Payment record created:', paymentRecord);
+
+    // Update requester's wallet balance
+    const { data: currentWallet, error: walletFetchError } = await supabaseClient
+      .from('wallets')
+      .select('balance, id')
+      .eq('user_id', supportRequest.requester_id)
+      .eq('currency', 'NGN')
       .single();
 
-    if (supportError || !supportRequest) {
-      console.error('Support request not found:', supportError);
+    if (walletFetchError) {
+      console.error('Wallet fetch error:', walletFetchError);
       return new Response(
-        JSON.stringify({ error: 'Support request not found' }),
+        JSON.stringify({ error: 'Failed to fetch wallet', details: walletFetchError }),
         { 
-          status: 404, 
+          status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
     }
 
-    // Update requester's wallet
+    const newBalance = Number(currentWallet.balance) + verifiedAmount;
+    console.log('Updating wallet balance from', currentWallet.balance, 'to', newBalance);
+
     const { error: walletError } = await supabaseClient
       .from('wallets')
       .update({
-        balance: supabaseClient.sql`balance + ${verifiedAmount}`,
+        balance: newBalance,
         updated_at: new Date().toISOString(),
       })
-      .eq('user_id', supportRequest.requester_id)
-      .eq('currency', 'NGN');
+      .eq('id', currentWallet.id);
 
     if (walletError) {
       console.error('Wallet update error:', walletError);
-      // Don't fail the whole operation, just log the error
+      return new Response(
+        JSON.stringify({ error: 'Failed to update wallet', details: walletError }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    console.log('Wallet updated successfully');
+
+    // Update project funding
+    const { data: currentProject, error: projectFetchError } = await supabaseClient
+      .from('projects')
+      .select('current_funding, id')
+      .eq('id', supportRequest.project_id)
+      .single();
+
+    if (projectFetchError) {
+      console.error('Project fetch error:', projectFetchError);
+    } else {
+      const newProjectFunding = Number(currentProject.current_funding) + verifiedAmount;
+      console.log('Updating project funding from', currentProject.current_funding, 'to', newProjectFunding);
+
+      const { error: projectError } = await supabaseClient
+        .from('projects')
+        .update({ 
+          current_funding: newProjectFunding,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', supportRequest.project_id);
+
+      if (projectError) {
+        console.error('Project update error:', projectError);
+      } else {
+        console.log('Project funding updated successfully');
+      }
     }
 
     // Create transaction record for the requester
@@ -140,22 +195,27 @@ const handler = async (req: Request): Promise<Response> => {
         user_id: supportRequest.requester_id,
         type: 'credit',
         amount: verifiedAmount,
-        description: `Support received: ${donor_name}`,
+        description: `Support received from ${donor_name}: ${supportRequest.title}`,
         reference: reference,
         paystack_reference: reference,
         status: 'completed',
+        project_id: supportRequest.project_id,
       });
 
     if (transactionError) {
       console.error('Transaction record error:', transactionError);
+    } else {
+      console.log('Transaction record created successfully');
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Support payment verified and processed',
+        message: 'Support payment verified and processed successfully',
         amount: verifiedAmount,
-        payment_id: paymentRecord.id
+        payment_id: paymentRecord.id,
+        wallet_updated: true,
+        project_updated: true
       }),
       {
         status: 200,
