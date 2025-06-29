@@ -32,6 +32,7 @@ import { Wallet } from "@/hooks/useWallet";
 import { useProfile } from "@/hooks/useProfile";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useProjects } from "@/hooks/useProjects";
+import WalletWithdrawal from "./WalletWithdrawal";
 
 interface ProfilePageProps {
   user: Profile;
@@ -169,6 +170,9 @@ const ProfilePage = ({ user, wallet, onSignOut }: ProfilePageProps) => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Wallet Withdrawal */}
+      <WalletWithdrawal />
 
       {/* Profile Header */}
       <Card className="p-6">

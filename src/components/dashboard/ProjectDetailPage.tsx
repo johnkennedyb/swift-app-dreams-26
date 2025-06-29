@@ -1,13 +1,49 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Loader2, Users, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  ArrowLeft, 
+  Users, 
+  Target, 
+  TrendingUp, 
+  Calendar,
+  Share2,
+  Heart,
+  DollarSign
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Project } from "@/hooks/useProjects";
+
+interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  admin_id: string;
+  funding_goal: number;
+  current_funding: number;
+  status: 'active' | 'completed' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+  profiles: {
+    first_name: string;
+    last_name: string;
+    avatar_url: string | null;
+  };
+  project_members: Array<{
+    id: string;
+    user_id: string;
+    joined_at: string;
+    profiles: {
+      first_name: string;
+      last_name: string;
+      avatar_url: string | null;
+    } | null;
+  }>;
+}
 
 interface ProjectDetailPageProps {
   projectId: string;
@@ -16,14 +52,36 @@ interface ProjectDetailPageProps {
 
 const ProjectDetailPage = ({ projectId, onBack }: ProjectDetailPageProps) => {
   const [project, setProject] = useState<Project | null>(null);
-  const [supporters, setSupporters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const { toast } = useToast();
 
-  const fetchProject = async () => {
-    setLoading(true);
+  useEffect(() => {
+    fetchProjectDetails();
+    
+    // Set up real-time subscription for project updates
+    const channel = supabase
+      .channel('project-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'projects',
+          filter: `id=eq.${projectId}`
+        },
+        (payload) => {
+          console.log('Project updated:', payload);
+          fetchProjectDetails(); // Refresh project data
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [projectId]);
+
+  const fetchProjectDetails = async () => {
     try {
       const { data, error } = await supabase
         .from('projects')
@@ -37,7 +95,12 @@ const ProjectDetailPage = ({ projectId, onBack }: ProjectDetailPageProps) => {
           project_members (
             id,
             user_id,
-            joined_at
+            joined_at,
+            profiles!project_members_user_id_fkey (
+              first_name,
+              last_name,
+              avatar_url
+            )
           )
         `)
         .eq('id', projectId)
@@ -45,9 +108,8 @@ const ProjectDetailPage = ({ projectId, onBack }: ProjectDetailPageProps) => {
 
       if (error) throw error;
       setProject(data);
-    } catch (error: any) {
-      console.error('Error fetching project:', error);
-      setError(error.message || 'Failed to load project details.');
+    } catch (error) {
+      console.error('Error fetching project details:', error);
       toast({
         title: "Error",
         description: "Failed to load project details",
@@ -58,166 +120,193 @@ const ProjectDetailPage = ({ projectId, onBack }: ProjectDetailPageProps) => {
     }
   };
 
-  const fetchSupporters = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select(`
-          *,
-          profiles!transactions_user_id_fkey (
-            first_name,
-            last_name,
-            avatar_url
-          )
-        `)
-        .eq('project_id', projectId)
-        .eq('type', 'debit')
-        .eq('status', 'completed')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setSupporters(data || []);
-    } catch (error) {
-      console.error('Error fetching supporters:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (projectId) {
-      fetchProject();
-      fetchSupporters();
-    }
-  }, [projectId]);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
       </div>
     );
   }
 
-  if (error || !project) {
+  if (!project) {
     return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <h2 className="text-lg font-semibold text-red-500 mb-2">Error</h2>
-        <p className="text-gray-600">{error || 'Project not found.'}</p>
+      <div className="text-center py-8">
+        <p className="text-gray-500">Project not found</p>
         <Button onClick={onBack} className="mt-4">
+          <ArrowLeft className="w-4 h-4 mr-2" />
           Go Back
         </Button>
       </div>
     );
   }
 
-  const progress = project.funding_goal > 0 ? (project.current_funding / project.funding_goal) * 100 : 0;
+  const fundingProgress = (project.current_funding / project.funding_goal) * 100;
   const remainingAmount = Math.max(0, project.funding_goal - project.current_funding);
-  const totalSupported = supporters.reduce((sum, supporter) => sum + supporter.amount, 0);
 
   return (
-    <div className="max-w-4xl mx-auto py-8 space-y-6">
-      <Button onClick={onBack} variant="ghost">
-        ← Back to Projects
-      </Button>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Projects
+        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm">
+            <Share2 className="w-4 h-4 mr-2" />
+            Share
+          </Button>
+        </div>
+      </div>
 
-      <Card className="border-0 shadow-md">
-        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-          <CardTitle className="text-2xl font-bold">{project.name}</CardTitle>
-          <Badge variant={project.status === "completed" ? "default" : "secondary"}>
-            {project.status}
-          </Badge>
-        </CardHeader>
-        <CardContent className="py-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Project Details */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Avatar className="w-12 h-12">
-                  <AvatarImage src={project.profiles.avatar_url || undefined} />
-                  <AvatarFallback className="text-lg font-semibold">
-                    {project.profiles.first_name.charAt(0)}{project.profiles.last_name.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-semibold text-gray-900">
-                    {project.profiles.first_name} {project.profiles.last_name}
-                  </h3>
-                  <p className="text-sm text-gray-500">Project Admin</p>
-                </div>
-              </div>
-
-              <p className="text-gray-700">{project.description || 'No description provided.'}</p>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-gray-500">Funding Progress</p>
-                  <p className="font-medium">{Math.round(progress)}%</p>
-                </div>
-                <Progress value={progress} className="h-2" />
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-500">Raised</p>
-                    <p className="font-semibold text-green-600">₦{project.current_funding.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Goal</p>
-                    <p className="font-semibold">₦{project.funding_goal.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Remaining</p>
-                    <p className="font-semibold text-orange-600">₦{remainingAmount.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Members</p>
-                    <p className="font-semibold">{project.project_members.length}</p>
-                  </div>
+      {/* Project Header */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-4">
+              <Avatar className="w-16 h-16">
+                <AvatarImage src={project.profiles.avatar_url || undefined} />
+                <AvatarFallback className="bg-purple-100 text-purple-600 text-lg">
+                  {project.profiles.first_name.charAt(0)}{project.profiles.last_name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <CardTitle className="text-2xl">{project.name}</CardTitle>
+                <p className="text-gray-600">
+                  by {project.profiles.first_name} {project.profiles.last_name}
+                </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>
+                    {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+                  </Badge>
+                  <span className="text-sm text-gray-500">
+                    Created {new Date(project.created_at).toLocaleDateString()}
+                  </span>
                 </div>
               </div>
             </div>
+          </div>
+        </CardHeader>
+      </Card>
 
-            {/* Supporters Section */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold text-gray-900">Top Supporters</h4>
-              {supporters.length === 0 ? (
-                <div className="text-center py-4 text-gray-500">
-                  <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                  <p>No supporters yet. Be the first!</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {supporters.map((supporter) => (
-                    <div key={supporter.id} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarImage src={supporter.profiles?.avatar_url || undefined} />
-                          <AvatarFallback>
-                            {supporter.profiles?.first_name?.charAt(0)}
-                            {supporter.profiles?.last_name?.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {supporter.profiles?.first_name} {supporter.profiles?.last_name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            <Calendar className="w-3 h-3 inline-block mr-1" />
-                            {new Date(supporter.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="font-semibold text-green-600">
-                        ₦{supporter.amount.toLocaleString()}
-                      </div>
-                    </div>
-                  ))}
-                  <div className="text-right">
-                    <p className="text-sm text-gray-500">Total Supported: ₦{totalSupported.toLocaleString()}</p>
-                  </div>
-                </div>
-              )}
+      {/* Funding Progress */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="w-5 h-5" />
+            Funding Progress
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Progress</span>
+              <span>{fundingProgress.toFixed(1)}%</span>
+            </div>
+            <Progress value={fundingProgress} className="h-3" />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-600">
+                ₦{project.current_funding.toLocaleString()}
+              </p>
+              <p className="text-sm text-gray-600">Raised</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-purple-600">
+                ₦{project.funding_goal.toLocaleString()}
+              </p>
+              <p className="text-sm text-gray-600">Goal</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-orange-600">
+                ₦{remainingAmount.toLocaleString()}
+              </p>
+              <p className="text-sm text-gray-600">Remaining</p>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Description */}
+      {project.description && (
+        <Card>
+          <CardHeader>
+            <CardTitle>About This Project</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-700 whitespace-pre-wrap">{project.description}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Project Members */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            Project Members ({project.project_members.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {project.project_members.map((member) => (
+              <div key={member.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                <Avatar>
+                  <AvatarImage src={member.profiles?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-purple-100 text-purple-600">
+                    {member.profiles ? 
+                      `${member.profiles.first_name.charAt(0)}${member.profiles.last_name.charAt(0)}` : 
+                      'UN'
+                    }
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">
+                    {member.profiles ? 
+                      `${member.profiles.first_name} ${member.profiles.last_name}` : 
+                      'Unknown User'
+                    }
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Joined {new Date(member.joined_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Project Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <TrendingUp className="w-8 h-8 text-green-600 mx-auto mb-2" />
+            <p className="text-xl font-bold">{fundingProgress.toFixed(1)}%</p>
+            <p className="text-sm text-gray-600">Funded</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Users className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+            <p className="text-xl font-bold">{project.project_members.length}</p>
+            <p className="text-sm text-gray-600">Members</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Calendar className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+            <p className="text-xl font-bold">
+              {Math.ceil((new Date().getTime() - new Date(project.created_at).getTime()) / (1000 * 60 * 60 * 24))}
+            </p>
+            <p className="text-sm text-gray-600">Days Active</p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
