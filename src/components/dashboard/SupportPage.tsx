@@ -53,7 +53,6 @@ const SupportPage = () => {
 
   const selectedSupportRequest = supportRequests.find(req => req.id === selectedRequest);
 
-  // Function to copy link directly to clipboard
   const handleCopyLink = async (requestId: string, title: string) => {
     const shareableUrl = `${window.location.origin}/support/${requestId}`;
     try {
@@ -283,7 +282,6 @@ const SupportPage = () => {
 
   return (
     <div className="space-y-8">
-      {/* Header + Create Button */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900">Support Requests</h1>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -358,7 +356,6 @@ const SupportPage = () => {
         </Dialog>
       </div>
 
-      {/* Support Requests List */}
       {supportRequests.length === 0 ? (
         <Card className="p-8 text-center">
           <Share2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
