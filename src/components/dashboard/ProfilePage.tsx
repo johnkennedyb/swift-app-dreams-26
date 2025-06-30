@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,9 +24,17 @@ import {
   CreditCard
 } from "lucide-react";
 import WalletWithdrawal from "./WalletWithdrawal";
+import { Profile } from "@/hooks/useProfile";
+import { Wallet as WalletType } from "@/hooks/useWallet";
 
-const ProfilePage = () => {
-  const { user, signOut } = useAuth();
+interface ProfilePageProps {
+  user: Profile;
+  wallet: WalletType;
+  onSignOut: () => void;
+}
+
+const ProfilePage = ({ user: userProp, wallet: walletProp, onSignOut }: ProfilePageProps) => {
+  const { user } = useAuth();
   const { profile, loading: profileLoading, updateProfile } = useProfile();
   const { wallet, loading: walletLoading } = useWallet();
   const { transactions, loading: transactionsLoading } = useTransactions();
@@ -39,16 +48,20 @@ const ProfilePage = () => {
   });
   const [isSaving, setIsSaving] = useState(false);
 
+  // Use props or fallback to hooks
+  const currentProfile = userProp || profile;
+  const currentWallet = walletProp || wallet;
+
   useState(() => {
-    if (profile) {
+    if (currentProfile) {
       setFormData({
-        first_name: profile.first_name || "",
-        last_name: profile.last_name || "",
-        phone: profile.phone || "",
-        address: profile.address || "",
+        first_name: currentProfile.first_name || "",
+        last_name: currentProfile.last_name || "",
+        phone: currentProfile.phone || "",
+        address: currentProfile.address || "",
       });
     }
-  }, [profile]);
+  });
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -61,12 +74,12 @@ const ProfilePage = () => {
   };
 
   const handleCancel = () => {
-    if (profile) {
+    if (currentProfile) {
       setFormData({
-        first_name: profile.first_name || "",
-        last_name: profile.last_name || "",
-        phone: profile.phone || "",
-        address: profile.address || "",
+        first_name: currentProfile.first_name || "",
+        last_name: currentProfile.last_name || "",
+        phone: currentProfile.phone || "",
+        address: currentProfile.address || "",
       });
     }
     setIsEditing(false);
@@ -92,14 +105,14 @@ const ProfilePage = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Avatar className="w-20 h-20">
-                <AvatarImage src={profile?.avatar_url || undefined} />
+                <AvatarImage src={currentProfile?.avatar_url || undefined} />
                 <AvatarFallback className="text-xl">
-                  {profile?.first_name?.charAt(0)}{profile?.last_name?.charAt(0)}
+                  {currentProfile?.first_name?.charAt(0)}{currentProfile?.last_name?.charAt(0)}
                 </AvatarFallback>
               </Avatar>
               <div>
                 <h1 className="text-2xl font-bold">
-                  {profile?.first_name} {profile?.last_name}
+                  {currentProfile?.first_name} {currentProfile?.last_name}
                 </h1>
                 <p className="text-gray-600">{user?.email}</p>
                 <Badge variant="outline" className="mt-1">
@@ -199,10 +212,10 @@ const ProfilePage = () => {
             <div className="text-center">
               <p className="text-sm text-gray-600">Available Balance</p>
               <p className="text-3xl font-bold text-green-600">
-                ₦{wallet?.balance.toLocaleString() || '0'}
+                ₦{currentWallet?.balance.toLocaleString() || '0'}
               </p>
               <p className="text-sm text-gray-500 mt-1">
-                Currency: {wallet?.currency || 'NGN'}
+                Currency: {currentWallet?.currency || 'NGN'}
               </p>
             </div>
           )}
@@ -279,7 +292,7 @@ const ProfilePage = () => {
               <Badge variant="outline">Verified</Badge>
             </div>
             <div className="pt-4 border-t">
-              <Button variant="destructive" onClick={signOut}>
+              <Button variant="destructive" onClick={onSignOut}>
                 Sign Out
               </Button>
             </div>
