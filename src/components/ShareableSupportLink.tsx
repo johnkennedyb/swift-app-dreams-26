@@ -30,7 +30,8 @@ const ShareableSupportLink = ({
   const { payments, loading: paymentsLoading, totalAmount } = useSupportPayments(supportRequestId);
 
   // Generate the shareable link
-  const shareableUrl = `https://preview--swift-app-dreams-26.lovable.app/support/${supportRequestId}`;
+   const shareableUrl = `https://appacus.vercel.app/support/${requestId}`;
+
 
   const handleCopyLink = async () => {
     try {

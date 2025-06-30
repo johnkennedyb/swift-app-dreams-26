@@ -66,7 +66,7 @@ const SupportPage = () => {
   const selectedSupportRequest = filteredSupportRequests.find(req => req.id === selectedRequest);
 
   const handleCopyLink = async (requestId: string, title: string) => {
-    const shareableUrl = `https://preview--swift-app-dreams-26.lovable.app/support/${requestId}`;
+    const shareableUrl = `https://appacus.vercel.app/support/${requestId}`;
     try {
       await navigator.clipboard.writeText(shareableUrl);
       toast({
@@ -83,7 +83,7 @@ const SupportPage = () => {
   };
 
   const handleShareOnSocial = (platform: string, requestId: string, title: string, description: string, amountNeeded: number) => {
-const shareableUrl = `https://preview--swift-app-dreams-26.lovable.app/support/${requestId}`;
+ const shareableUrl = `https://appacus.vercel.app/support/${requestId}`;
     const shareText = `Help support: ${title} - ${description.substring(0, 100)}... Amount needed: ₦${amountNeeded.toLocaleString()}`;
     const encodedText = encodeURIComponent(shareText);
     const encodedUrl = encodeURIComponent(shareableUrl);
