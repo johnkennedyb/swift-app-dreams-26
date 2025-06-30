@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,12 +28,15 @@ import { useSupportComments } from "@/hooks/useSupportComments";
 import { useProjects } from "@/hooks/useProjects";
 import { useSupportPayment } from "@/hooks/useSupportPayment";
 import { useWallet } from "@/hooks/useWallet";
+import { useAuth } from "@/hooks/useAuth";
+import ShareableSupportLink from "@/components/ShareableSupportLink";
 
 const SupportPage = () => {
   const { supportRequests, loading: supportLoading, createSupportRequest } = useSupportRequests();
   const { projects, loading: projectsLoading } = useProjects();
   const { supportRequest, loading: supportPaymentLoading } = useSupportPayment();
   const { wallet } = useWallet();
+  const { user } = useAuth();
   const { toast } = useToast();
   
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
@@ -51,10 +53,20 @@ const SupportPage = () => {
 
   const { comments, loading: commentsLoading, addComment } = useSupportComments(selectedRequest);
 
-  const selectedSupportRequest = supportRequests.find(req => req.id === selectedRequest);
+  // Filter support requests to show only user's own requests
+  const filteredSupportRequests = supportRequests.filter(request => 
+    request.requester_id === user?.id
+  );
+
+  // Filter projects to show only user's own projects
+  const userProjects = projects.filter(project => 
+    project.admin_id === user?.id
+  );
+
+  const selectedSupportRequest = filteredSupportRequests.find(req => req.id === selectedRequest);
 
   const handleCopyLink = async (requestId: string, title: string) => {
-    const shareableUrl = `${window.location.origin}/support/${requestId}`;
+    const shareableUrl = `https://preview--swift-app-dreams-26.lovable.app/support/${requestId}`;
     try {
       await navigator.clipboard.writeText(shareableUrl);
       toast({
@@ -67,6 +79,34 @@ const SupportPage = () => {
         description: "Could not copy link to clipboard",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleShareOnSocial = (platform: string, requestId: string, title: string, description: string, amountNeeded: number) => {
+const shareableUrl = `https://preview--swift-app-dreams-26.lovable.app/support/${requestId}`;
+    const shareText = `Help support: ${title} - ${description.substring(0, 100)}... Amount needed: ₦${amountNeeded.toLocaleString()}`;
+    const encodedText = encodeURIComponent(shareText);
+    const encodedUrl = encodeURIComponent(shareableUrl);
+
+    let shareUrl = '';
+    
+    switch (platform) {
+      case 'twitter':
+        shareUrl = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
+        break;
+      case 'facebook':
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`;
+        break;
+      case 'whatsapp':
+        shareUrl = `https://wa.me/?text=${encodedText}%20${encodedUrl}`;
+        break;
+      case 'telegram':
+        shareUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`;
+        break;
+    }
+
+    if (shareUrl) {
+      window.open(shareUrl, '_blank', 'width=600,height=400');
     }
   };
 
@@ -153,29 +193,38 @@ const SupportPage = () => {
           Back
         </Button>
         <h1 className="text-xl font-bold text-purple-600">{request.title}</h1>
-        <Button 
-          variant="outline" 
-          onClick={() => handleCopyLink(request.id, request.title)}
-          className="text-purple-600 border-purple-600 hover:bg-purple-50"
-        >
-          <Share2 className="w-4 h-4 mr-2" />
-          Share
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => handleCopyLink(request.id, request.title)}
+            className="text-purple-600 border-purple-600 hover:bg-purple-50"
+          >
+            <Copy className="w-4 h-4 mr-2" />
+            Copy Link
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => handleShareOnSocial('whatsapp', request.id, request.title, request.description, request.amount_needed)}
+            className="text-green-600 border-green-600 hover:bg-green-50"
+          >
+            Share WhatsApp
+          </Button>
+        </div>
       </div>
 
       <Card className="p-6">
         <div className="flex items-center space-x-3 mb-4">
           <Avatar className="w-12 h-12">
-            <AvatarImage src={request.profiles.avatar_url || undefined} />
+            <AvatarImage src={request.profiles?.avatar_url || undefined} />
             <AvatarFallback>
-              {request.profiles.first_name.charAt(0)}{request.profiles.last_name.charAt(0)}
+              {request.profiles?.first_name?.charAt(0) || 'U'}{request.profiles?.last_name?.charAt(0) || ''}
             </AvatarFallback>
           </Avatar>
           <div>
             <h3 className="font-semibold">
-              {request.profiles.first_name} {request.profiles.last_name}
+              {request.profiles?.first_name || 'Unknown'} {request.profiles?.last_name || ''}
             </h3>
-            <p className="text-sm text-gray-600">{request.projects.name}</p>
+            <p className="text-sm text-gray-600">{request.projects?.name || 'Unknown Project'}</p>
           </div>
         </div>
 
@@ -226,15 +275,15 @@ const SupportPage = () => {
               {comments.map((comment) => (
                 <div key={comment.id} className="flex space-x-3">
                   <Avatar className="w-8 h-8">
-                    <AvatarImage src={comment.profiles.avatar_url || undefined} />
+                    <AvatarImage src={comment.profiles?.avatar_url || undefined} />
                     <AvatarFallback>
-                      {comment.profiles.first_name.charAt(0)}{comment.profiles.last_name.charAt(0)}
+                      {comment.profiles?.first_name?.charAt(0) || 'U'}{comment.profiles?.last_name?.charAt(0) || ''}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <div className="bg-gray-100 rounded-lg p-3">
                       <p className="text-sm font-medium">
-                        {comment.profiles.first_name} {comment.profiles.last_name}
+                        {comment.profiles?.first_name || 'Unknown'} {comment.profiles?.last_name || ''}
                       </p>
                       <p className="text-sm">{comment.comment}</p>
                     </div>
@@ -265,6 +314,14 @@ const SupportPage = () => {
           </div>
         </div>
       </Card>
+
+      <ShareableSupportLink
+        supportRequestId={request.id}
+        title={request.title}
+        description={request.description}
+        amountNeeded={request.amount_needed}
+        requesterName={`${request.profiles?.first_name || 'Unknown'} ${request.profiles?.last_name || ''}`}
+      />
     </div>
   );
 
@@ -283,7 +340,7 @@ const SupportPage = () => {
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">Support Requests</h1>
+        <h1 className="text-2xl font-bold text-gray-900">My Support Requests</h1>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
             <Button className="bg-purple-600 hover:bg-purple-700">
@@ -307,7 +364,7 @@ const SupportPage = () => {
                     <SelectValue placeholder="Select a project" />
                   </SelectTrigger>
                   <SelectContent>
-                    {projects.map(p => (
+                    {userProjects.map(p => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.name}
                       </SelectItem>
@@ -356,7 +413,7 @@ const SupportPage = () => {
         </Dialog>
       </div>
 
-      {supportRequests.length === 0 ? (
+      {filteredSupportRequests.length === 0 ? (
         <Card className="p-8 text-center">
           <Share2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No Support Requests Yet</h3>
@@ -372,47 +429,67 @@ const SupportPage = () => {
         </Card>
       ) : (
         <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {supportRequests.map(request => (
+          {filteredSupportRequests.map(request => (
             <Card key={request.id} className="p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-4">
                   <Avatar className="w-12 h-12">
-                    <AvatarImage src={request.profiles.avatar_url || undefined} />
+                    <AvatarImage src={request.profiles?.avatar_url || undefined} />
                     <AvatarFallback>
-                      {request.profiles.first_name.charAt(0)}
-                      {request.profiles.last_name.charAt(0)}
+                      {request.profiles?.first_name?.charAt(0) || 'U'}
+                      {request.profiles?.last_name?.charAt(0) || ''}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <h3 className="font-semibold text-gray-900">{request.title}</h3>
                     <p className="text-sm text-gray-600">
-                      By {request.profiles.first_name} {request.profiles.last_name}
+                      By {request.profiles?.first_name || 'Unknown'} {request.profiles?.last_name || ''}
                     </p>
                     <p className="text-sm text-gray-500">
-                      Project: {request.projects.name}
+                      Project: {request.projects?.name || 'Unknown Project'}
                     </p>
                     <p className="text-lg font-bold text-purple-600 mt-1">
                       ₦{request.amount_needed.toLocaleString()}
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-col space-y-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => handleCopyLink(request.id, request.title)}
-                    className="text-green-600 border-green-600 hover:bg-green-50"
-                  >
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copy Link
-                  </Button>
-                  <Button
-                    className="bg-purple-600 hover:bg-purple-700"
-                    onClick={() => setSelectedRequest(request.id)}
-                  >
-                    View Details
-                  </Button>
-                </div>
               </div>
+              
+              {/* Share buttons */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopyLink(request.id, request.title)}
+                  className="text-purple-600 border-purple-600 hover:bg-purple-50"
+                >
+                  <Copy className="w-3 h-3 mr-1" />
+                  Copy Link
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleShareOnSocial('whatsapp', request.id, request.title, request.description, request.amount_needed)}
+                  className="text-green-600 border-green-600 hover:bg-green-50"
+                >
+                  WhatsApp
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleShareOnSocial('twitter', request.id, request.title, request.description, request.amount_needed)}
+                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                >
+                  Twitter
+                </Button>
+              </div>
+              
+              <Button
+                className="w-full bg-purple-600 hover:bg-purple-700"
+                onClick={() => setSelectedRequest(request.id)}
+              >
+                View Details
+              </Button>
             </Card>
           ))}
         </div>

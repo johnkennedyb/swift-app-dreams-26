@@ -30,7 +30,7 @@ const ShareableSupportLink = ({
   const { payments, loading: paymentsLoading, totalAmount } = useSupportPayments(supportRequestId);
 
   // Generate the shareable link
-  const shareableUrl = `${window.location.origin}/support/${supportRequestId}`;
+  const shareableUrl = `https://preview--swift-app-dreams-26.lovable.app/support/${supportRequestId}`;
 
   const handleCopyLink = async () => {
     try {
