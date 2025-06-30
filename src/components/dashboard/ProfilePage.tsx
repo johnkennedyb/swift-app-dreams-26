@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,20 +21,14 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Loader2,
-  CreditCard
+  CreditCard,
+  PiggyBank,
+  TrendingUp
 } from "lucide-react";
 import WalletWithdrawal from "./WalletWithdrawal";
-import { Profile } from "@/hooks/useProfile";
-import { Wallet as WalletType } from "@/hooks/useWallet";
 
-interface ProfilePageProps {
-  user: Profile;
-  wallet: WalletType;
-  onSignOut: () => void;
-}
-
-const ProfilePage = ({ user: userProp, wallet: walletProp, onSignOut }: ProfilePageProps) => {
-  const { user } = useAuth();
+const ProfilePage = () => {
+  const { user, signOut } = useAuth();
   const { profile, loading: profileLoading, updateProfile } = useProfile();
   const { wallet, loading: walletLoading } = useWallet();
   const { transactions, loading: transactionsLoading } = useTransactions();
@@ -48,20 +42,16 @@ const ProfilePage = ({ user: userProp, wallet: walletProp, onSignOut }: ProfileP
   });
   const [isSaving, setIsSaving] = useState(false);
 
-  // Use props or fallback to hooks
-  const currentProfile = userProp || profile;
-  const currentWallet = walletProp || wallet;
-
-  useState(() => {
-    if (currentProfile) {
+  useEffect(() => {
+    if (profile) {
       setFormData({
-        first_name: currentProfile.first_name || "",
-        last_name: currentProfile.last_name || "",
-        phone: currentProfile.phone || "",
-        address: currentProfile.address || "",
+        first_name: profile.first_name || "",
+        last_name: profile.last_name || "",
+        phone: profile.phone || "",
+        address: profile.address || "",
       });
     }
-  });
+  }, [profile]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -74,12 +64,12 @@ const ProfilePage = ({ user: userProp, wallet: walletProp, onSignOut }: ProfileP
   };
 
   const handleCancel = () => {
-    if (currentProfile) {
+    if (profile) {
       setFormData({
-        first_name: currentProfile.first_name || "",
-        last_name: currentProfile.last_name || "",
-        phone: currentProfile.phone || "",
-        address: currentProfile.address || "",
+        first_name: profile.first_name || "",
+        last_name: profile.last_name || "",
+        phone: profile.phone || "",
+        address: profile.address || "",
       });
     }
     setIsEditing(false);
@@ -98,21 +88,76 @@ const ProfilePage = ({ user: userProp, wallet: walletProp, onSignOut }: ProfileP
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto p-4">
+      {/* Colorful Wallet Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100">Total Balance</p>
+                <p className="text-2xl font-bold">
+                  ₦{wallet?.balance.toLocaleString() || '0'}
+                </p>
+              </div>
+              <Wallet className="w-8 h-8 text-purple-200" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100">Available</p>
+                <p className="text-2xl font-bold">
+                  ₦{wallet?.balance.toLocaleString() || '0'}
+                </p>
+              </div>
+              <PiggyBank className="w-8 h-8 text-blue-200" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100">Growth</p>
+                <p className="text-2xl font-bold">+12%</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-green-200" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Withdrawal Button */}
+      <div className="flex justify-center mb-6">
+        <Button 
+          onClick={() => setShowWithdrawal(true)}
+          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 text-lg"
+          size="lg"
+        >
+          <CreditCard className="w-5 h-5 mr-2" />
+          Withdraw to Bank
+        </Button>
+      </div>
+
       {/* Profile Header */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Avatar className="w-20 h-20">
-                <AvatarImage src={currentProfile?.avatar_url || undefined} />
+                <AvatarImage src={profile?.avatar_url || undefined} />
                 <AvatarFallback className="text-xl">
-                  {currentProfile?.first_name?.charAt(0)}{currentProfile?.last_name?.charAt(0)}
+                  {profile?.first_name?.charAt(0)}{profile?.last_name?.charAt(0)}
                 </AvatarFallback>
               </Avatar>
               <div>
                 <h1 className="text-2xl font-bold">
-                  {currentProfile?.first_name} {currentProfile?.last_name}
+                  {profile?.first_name} {profile?.last_name}
                 </h1>
                 <p className="text-gray-600">{user?.email}</p>
                 <Badge variant="outline" className="mt-1">
@@ -186,42 +231,6 @@ const ProfilePage = ({ user: userProp, wallet: walletProp, onSignOut }: ProfileP
         </CardContent>
       </Card>
 
-      {/* Wallet Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Wallet className="w-5 h-5" />
-              Wallet
-            </CardTitle>
-            <Button 
-              onClick={() => setShowWithdrawal(true)}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              <CreditCard className="w-4 h-4 mr-2" />
-              Withdraw
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {walletLoading ? (
-            <div className="flex items-center justify-center h-20">
-              <Loader2 className="w-6 h-6 animate-spin" />
-            </div>
-          ) : (
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Available Balance</p>
-              <p className="text-3xl font-bold text-green-600">
-                ₦{currentWallet?.balance.toLocaleString() || '0'}
-              </p>
-              <p className="text-sm text-gray-500 mt-1">
-                Currency: {currentWallet?.currency || 'NGN'}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Transaction History */}
       <Card>
         <CardHeader>
@@ -292,7 +301,7 @@ const ProfilePage = ({ user: userProp, wallet: walletProp, onSignOut }: ProfileP
               <Badge variant="outline">Verified</Badge>
             </div>
             <div className="pt-4 border-t">
-              <Button variant="destructive" onClick={onSignOut}>
+              <Button variant="destructive" onClick={signOut}>
                 Sign Out
               </Button>
             </div>
