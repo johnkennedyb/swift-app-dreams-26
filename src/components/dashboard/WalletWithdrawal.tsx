@@ -38,18 +38,33 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
   const [step, setStep] = useState<'details' | 'confirm'>('details');
 
   useEffect(() => {
+    console.log('WalletWithdrawal mounted, loading banks...');
     loadBanks();
   }, []);
 
   const loadBanks = async () => {
     try {
+      console.log('Starting to load banks...');
       const response = await getBankList();
+      console.log('Bank list response:', response);
+      
       if (response.status) {
-        setBanks(response.data.filter(bank => bank.active && bank.country === 'Nigeria'));
+        const nigerianBanks = response.data.filter(bank => bank.active && bank.country === 'Nigeria');
+        console.log('Filtered Nigerian banks:', nigerianBanks);
+        setBanks(nigerianBanks);
+        
+        if (nigerianBanks.length === 0) {
+          toast({
+            title: "Notice",
+            description: "No active Nigerian banks found",
+            variant: "destructive",
+          });
+        }
       } else {
+        console.error('Failed to load banks:', response.message);
         toast({
           title: "Error",
-          description: "Failed to load bank list",
+          description: response.message || "Failed to load bank list",
           variant: "destructive",
         });
       }
@@ -57,7 +72,7 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
       console.error('Error loading banks:', error);
       toast({
         title: "Error",
-        description: "Failed to load bank list",
+        description: "Failed to load bank list. Please check your internet connection.",
         variant: "destructive",
       });
     } finally {
@@ -66,7 +81,10 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
   };
 
   const handleBankSelect = (bankCode: string) => {
+    console.log('Bank selected:', bankCode);
     const selectedBank = banks.find(bank => bank.code === bankCode);
+    console.log('Selected bank details:', selectedBank);
+    
     setBankDetails(prev => ({
       ...prev,
       bankCode,
@@ -85,9 +103,12 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
       return;
     }
 
+    console.log('Verifying account:', bankDetails);
     setVerifying(true);
+    
     try {
       const response = await verifyBankAccount(bankDetails.accountNumber, bankDetails.bankCode);
+      console.log('Account verification response:', response);
       
       if (response.status) {
         const accountName = response.data.account_name;
@@ -149,29 +170,32 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
 
     setLoading(true);
     try {
-      // Create transfer recipient
+      console.log('Creating transfer recipient...');
       const recipientResponse = await createTransferRecipient(
         verifiedAccount.account_number,
         verifiedAccount.bank_code,
         verifiedAccount.account_name
       );
 
+      console.log('Recipient response:', recipientResponse);
+
       if (!recipientResponse.status) {
         throw new Error(recipientResponse.message || 'Failed to create recipient');
       }
 
-      // Initiate transfer
+      console.log('Initiating transfer...');
       const transferResponse = await initiateTransfer(
         withdrawalAmount,
         recipientResponse.data.recipient_code,
         `Wallet withdrawal to ${verifiedAccount.bank_name}`
       );
 
+      console.log('Transfer response:', transferResponse);
+
       if (!transferResponse.status) {
         throw new Error(transferResponse.message || 'Failed to initiate transfer');
       }
 
-      // Refresh wallet data
       refetchWallet();
       
       toast({
@@ -179,7 +203,6 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
         description: `Successfully withdrew ₦${withdrawalAmount.toLocaleString()} to your bank account`,
       });
       
-      // Reset form and go back
       setAmount("");
       setBankDetails({
         accountNumber: "",
@@ -212,7 +235,7 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
             <Button variant="ghost" size="sm" onClick={onBack}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <CardTitle>Withdraw to Bank</CardTitle>
+            <CardTitle>🏦 Withdraw to Bank</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -239,10 +262,18 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
               </div>
 
               <div>
-                <Label htmlFor="bankName">Bank Name</Label>
-                <Select value={bankDetails.bankCode} onValueChange={handleBankSelect}>
+                <Label htmlFor="bankName">Select Bank</Label>
+                <Select 
+                  value={bankDetails.bankCode} 
+                  onValueChange={handleBankSelect}
+                  disabled={loadingBanks}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder={loadingBanks ? "Loading banks..." : "Select your bank"} />
+                    <SelectValue placeholder={
+                      loadingBanks ? "Loading banks..." : 
+                      banks.length === 0 ? "No banks available" :
+                      "Select your bank"
+                    } />
                   </SelectTrigger>
                   <SelectContent>
                     {banks.map((bank) => (
@@ -252,6 +283,12 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
                     ))}
                   </SelectContent>
                 </Select>
+                {loadingBanks && (
+                  <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading available banks...
+                  </p>
+                )}
               </div>
 
               <div>
@@ -260,7 +297,7 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
                   id="accountNumber"
                   value={bankDetails.accountNumber}
                   onChange={(e) => setBankDetails(prev => ({ ...prev, accountNumber: e.target.value }))}
-                  placeholder="Enter account number"
+                  placeholder="Enter your 10-digit account number"
                   maxLength={10}
                 />
               </div>
@@ -268,12 +305,21 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
               {bankDetails.accountNumber && bankDetails.bankCode && !verifiedAccount && (
                 <Button 
                   onClick={verifyAccount}
-                  disabled={verifying}
+                  disabled={verifying || bankDetails.accountNumber.length !== 10}
                   className="w-full"
                   variant="outline"
                 >
-                  {verifying ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
-                  Verify Account
+                  {verifying ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Verifying Account...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Verify Account Details
+                    </>
+                  )}
                 </Button>
               )}
 
@@ -281,9 +327,9 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center gap-2 text-green-800">
                     <CheckCircle className="w-5 h-5" />
-                    <span className="font-medium">Account Verified</span>
+                    <span className="font-medium">Account Verified ✅</span>
                   </div>
-                  <p className="text-sm text-green-700 mt-1">
+                  <p className="text-sm text-green-700 mt-1 font-medium">
                     {verifiedAccount.account_name}
                   </p>
                   <p className="text-sm text-green-600">
