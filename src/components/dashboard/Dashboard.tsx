@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,7 +47,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
       case "support":
         return <SupportPage />;
       case "profile":
-        return <ProfilePage user={user} wallet={wallet} onSignOut={onSignOut} />;
+        return <ProfilePage />;
       case "create":
         // For now, redirect to projects page where they can create
         setActiveTab("projects");

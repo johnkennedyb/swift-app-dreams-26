@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface BankAccount {
@@ -41,9 +40,14 @@ export interface AccountVerificationResponse {
 // Get list of Nigerian banks from Paystack
 export const getBankList = async (): Promise<BankListResponse> => {
   try {
+    console.log('Fetching bank list from Supabase function...');
+    
     const { data, error } = await supabase.functions.invoke('get-bank-list');
     
+    console.log('Bank list response:', { data, error });
+    
     if (error) {
+      console.error('Error from Supabase function:', error);
       return {
         status: false,
         message: error.message || 'Failed to fetch bank list',
@@ -51,6 +55,7 @@ export const getBankList = async (): Promise<BankListResponse> => {
       };
     }
     
+    console.log('Successfully fetched bank list:', data);
     return data;
   } catch (error: any) {
     console.error('Error fetching bank list:', error);
