@@ -20,12 +20,28 @@ interface WalletWithdrawalProps {
   onBack: () => void;
 }
 
+interface Bank {
+  name: string;
+  slug: string;
+  code: string;
+  longcode: string;
+  gateway: string;
+  pay_with_bank: boolean;
+  active: boolean;
+  country: string;
+  currency: string;
+  type: string;
+  is_deleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
   const { wallet, refetch: refetchWallet } = useWallet();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [banks, setBanks] = useState<any[]>([]);
+  const [banks, setBanks] = useState<Bank[]>([]);
   const [loadingBanks, setLoadingBanks] = useState(true);
   const [amount, setAmount] = useState("");
   const [bankDetails, setBankDetails] = useState({
@@ -48,8 +64,14 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
       const response = await getBankList();
       console.log('Bank list response:', response);
       
-      if (response.status) {
-        const nigerianBanks = response.data.filter(bank => bank.active && bank.country === 'Nigeria');
+      if (response.status && response.data) {
+        // Filter for Nigerian banks that are active
+        const nigerianBanks = response.data.filter((bank: Bank) => 
+          bank.active && 
+          bank.country === 'Nigeria' && 
+          !bank.is_deleted &&
+          bank.code
+        );
         console.log('Filtered Nigerian banks:', nigerianBanks);
         setBanks(nigerianBanks);
         
@@ -81,16 +103,22 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
   };
 
   const handleBankSelect = (bankCode: string) => {
-    console.log('Bank selected:', bankCode);
+    console.log('Bank selected with code:', bankCode);
     const selectedBank = banks.find(bank => bank.code === bankCode);
     console.log('Selected bank details:', selectedBank);
     
-    setBankDetails(prev => ({
-      ...prev,
-      bankCode,
-      bankName: selectedBank?.name || "",
-    }));
-    setVerifiedAccount(null);
+    if (selectedBank) {
+      setBankDetails(prev => ({
+        ...prev,
+        bankCode: selectedBank.code,
+        bankName: selectedBank.name,
+      }));
+      setVerifiedAccount(null);
+      console.log('Bank details updated:', {
+        bankCode: selectedBank.code,
+        bankName: selectedBank.name
+      });
+    }
   };
 
   const verifyAccount = async () => {
@@ -103,6 +131,15 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
       return;
     }
 
+    if (bankDetails.accountNumber.length !== 10) {
+      toast({
+        title: "Error",
+        description: "Account number must be 10 digits",
+        variant: "destructive",
+      });
+      return;
+    }
+
     console.log('Verifying account:', bankDetails);
     setVerifying(true);
     
@@ -110,7 +147,7 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
       const response = await verifyBankAccount(bankDetails.accountNumber, bankDetails.bankCode);
       console.log('Account verification response:', response);
       
-      if (response.status) {
+      if (response.status && response.data) {
         const accountName = response.data.account_name;
         setBankDetails(prev => ({ ...prev, accountName }));
         setVerifiedAccount({
@@ -203,6 +240,7 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
         description: `Successfully withdrew ₦${withdrawalAmount.toLocaleString()} to your bank account`,
       });
       
+      // Reset form
       setAmount("");
       setBankDetails({
         accountNumber: "",
@@ -255,7 +293,7 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
                   type="number"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Enter amount"
+                  placeholder="Enter amount (minimum ₦100)"
                   min="100"
                 />
                 <p className="text-sm text-gray-500 mt-1">Minimum withdrawal: ₦100</p>
@@ -286,7 +324,12 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
                 {loadingBanks && (
                   <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Loading available banks...
+                    Loading banks from Paystack...
+                  </p>
+                )}
+                {banks.length > 0 && !loadingBanks && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    {banks.length} banks available
                   </p>
                 )}
               </div>
@@ -296,23 +339,30 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
                 <Input
                   id="accountNumber"
                   value={bankDetails.accountNumber}
-                  onChange={(e) => setBankDetails(prev => ({ ...prev, accountNumber: e.target.value }))}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '');
+                    setBankDetails(prev => ({ ...prev, accountNumber: value }));
+                    setVerifiedAccount(null);
+                  }}
                   placeholder="Enter your 10-digit account number"
                   maxLength={10}
                 />
+                <p className="text-sm text-gray-500 mt-1">
+                  {bankDetails.accountNumber.length}/10 digits
+                </p>
               </div>
 
-              {bankDetails.accountNumber && bankDetails.bankCode && !verifiedAccount && (
+              {bankDetails.accountNumber.length === 10 && bankDetails.bankCode && !verifiedAccount && (
                 <Button 
                   onClick={verifyAccount}
-                  disabled={verifying || bankDetails.accountNumber.length !== 10}
+                  disabled={verifying}
                   className="w-full"
                   variant="outline"
                 >
                   {verifying ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Verifying Account...
+                      Verifying with Paystack...
                     </>
                   ) : (
                     <>

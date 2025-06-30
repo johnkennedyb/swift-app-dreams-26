@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface BankAccount {
@@ -44,13 +45,21 @@ export const getBankList = async (): Promise<BankListResponse> => {
     
     const { data, error } = await supabase.functions.invoke('get-bank-list');
     
-    console.log('Bank list response:', { data, error });
+    console.log('Bank list response from Supabase:', { data, error });
     
     if (error) {
       console.error('Error from Supabase function:', error);
       return {
         status: false,
-        message: error.message || 'Failed to fetch bank list',
+        message: error.message || 'Failed to fetch bank list. Please ensure PAYSTACK_SECRET_KEY is set in Supabase secrets.',
+        data: []
+      };
+    }
+    
+    if (!data) {
+      return {
+        status: false,
+        message: 'No data received from bank list API',
         data: []
       };
     }
@@ -61,7 +70,7 @@ export const getBankList = async (): Promise<BankListResponse> => {
     console.error('Error fetching bank list:', error);
     return {
       status: false,
-      message: error.message || 'Network error occurred',
+      message: error.message || 'Network error occurred. Please check your connection and try again.',
       data: []
     };
   }
@@ -82,10 +91,12 @@ export const verifyBankAccount = async (
       }
     });
     
+    console.log('Bank account verification response:', { data, error });
+    
     if (error) {
       return {
         status: false,
-        message: error.message || 'Failed to verify account',
+        message: error.message || 'Failed to verify account. Please ensure PAYSTACK_SECRET_KEY is set in Supabase secrets.',
         data: {
           account_number: '',
           account_name: '',
@@ -94,48 +105,26 @@ export const verifyBankAccount = async (
       };
     }
     
-    console.log('Bank account verification response:', data);
-    return data;
-  } catch (error: any) {
-    console.error('Error verifying bank account:', error);
-    return {
+    return data || {
       status: false,
-      message: error.message || 'Network error occurred',
+      message: 'No response from verification API',
       data: {
         account_number: '',
         account_name: '',
         bank_id: 0
       }
     };
-  }
-};
-
-// Initiate transfer to user's bank account
-export const initiateTransfer = async (
-  amount: number,
-  recipientCode: string,
-  reason: string = 'Wallet withdrawal'
-): Promise<any> => {
-  try {
-    console.log('Initiating transfer:', { amount, recipientCode, reason });
-    
-    const { data, error } = await supabase.functions.invoke('initiate-transfer', {
-      body: {
-        amount: Math.round(amount * 100), // Convert to kobo
-        recipient: recipientCode,
-        reason
-      }
-    });
-    
-    if (error) {
-      throw new Error(error.message || 'Failed to initiate transfer');
-    }
-    
-    console.log('Transfer initiated successfully:', data);
-    return data;
   } catch (error: any) {
-    console.error('Error initiating transfer:', error);
-    throw error;
+    console.error('Error verifying bank account:', error);
+    return {
+      status: false,
+      message: error.message || 'Network error occurred during verification',
+      data: {
+        account_number: '',
+        account_name: '',
+        bank_id: 0
+      }
+    };
   }
 };
 
@@ -159,13 +148,42 @@ export const createTransferRecipient = async (
     });
     
     if (error) {
-      throw new Error(error.message || 'Failed to create recipient');
+      throw new Error(error.message || 'Failed to create recipient. Please ensure PAYSTACK_SECRET_KEY is set in Supabase secrets.');
     }
     
     console.log('Transfer recipient created:', data);
     return data;
   } catch (error: any) {
     console.error('Error creating transfer recipient:', error);
+    throw error;
+  }
+};
+
+// Initiate transfer to user's bank account
+export const initiateTransfer = async (
+  amount: number,
+  recipientCode: string,
+  reason: string = 'Wallet withdrawal'
+): Promise<any> => {
+  try {
+    console.log('Initiating transfer:', { amount, recipientCode, reason });
+    
+    const { data, error } = await supabase.functions.invoke('initiate-transfer', {
+      body: {
+        amount: Math.round(amount * 100), // Convert to kobo
+        recipient: recipientCode,
+        reason
+      }
+    });
+    
+    if (error) {
+      throw new Error(error.message || 'Failed to initiate transfer. Please ensure PAYSTACK_SECRET_KEY is set in Supabase secrets.');
+    }
+    
+    console.log('Transfer initiated successfully:', data);
+    return data;
+  } catch (error: any) {
+    console.error('Error initiating transfer:', error);
     throw error;
   }
 };
