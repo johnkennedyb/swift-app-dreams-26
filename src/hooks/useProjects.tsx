@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -57,6 +56,7 @@ export const useProjects = () => {
             joined_at
           )
         `)
+        .eq('admin_id', user?.id) // Only fetch projects created by current user
         .order('created_at', { ascending: false });
 
       if (error) {

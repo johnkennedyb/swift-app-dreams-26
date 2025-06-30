@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -67,6 +66,7 @@ export const useSupportRequests = () => {
             name
           )
         `)
+        .eq('requester_id', user?.id) // Only fetch support requests created by current user
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
