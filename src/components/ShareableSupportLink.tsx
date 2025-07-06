@@ -30,7 +30,7 @@ const ShareableSupportLink = ({
   const { payments, loading: paymentsLoading, totalAmount } = useSupportPayments(supportRequestId);
 
   // Generate the shareable link
-const shareableUrl = `https://appacus3.onrender.com/support/${supportRequestId}`;
+const shareableUrl = `https://appacus.hpcan.com.ng/support/${supportRequestId}`;
 
   const handleCopyLink = async () => {
     try {

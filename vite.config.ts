@@ -7,7 +7,7 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   base: './', // <-- very important for Capacitor
   build: {
-    outDir: 'www', // <-- Capacitor needs this folder
+    outDir: 'dist', // <-- Capacitor needs this folder
   },
   server: {
     host: "::",
