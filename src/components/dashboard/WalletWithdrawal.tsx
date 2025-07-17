@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,21 +45,37 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
   }, []);
 
   const loadBanks = async () => {
+    console.log('Starting to load banks...');
     try {
       const response = await getBankList();
+      console.log('Bank list response:', response);
       
-      if (response.status && response.data) {
-        const nigerianBanks = response.data.filter((bank: any) => 
-          bank.active && 
-          bank.country === 'Nigeria' && 
-          !bank.is_deleted &&
-          bank.code
-        );
+      if (response.status && response.data && Array.isArray(response.data)) {
+        // Filter for Nigerian banks that are active
+        const nigerianBanks = response.data.filter((bank: any) => {
+          console.log('Processing bank:', bank);
+          return bank.active === true && 
+                 bank.country === 'Nigeria' && 
+                 bank.is_deleted === false &&
+                 bank.code && 
+                 bank.name;
+        });
+        
+        console.log('Filtered Nigerian banks:', nigerianBanks);
         setBanks(nigerianBanks);
+        
+        if (nigerianBanks.length === 0) {
+          toast({
+            title: "Warning",
+            description: "No Nigerian banks found in the response",
+            variant: "destructive",
+          });
+        }
       } else {
+        console.error('Invalid response structure:', response);
         toast({
           title: "Error",
-          description: response.message || "Failed to load bank list",
+          description: response.message || "Invalid response from bank API",
           variant: "destructive",
         });
       }
@@ -211,16 +226,22 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
                   <SelectTrigger>
                     <SelectValue placeholder={
                       loadingBanks ? "Loading banks..." : 
-                      banks.length === 0 ? "No banks available" :
+                      banks.length === 0 ? "No banks available - Click to retry" :
                       "Select your bank"
                     } />
                   </SelectTrigger>
                   <SelectContent>
-                    {banks.map((bank) => (
-                      <SelectItem key={bank.code} value={bank.code}>
-                        {bank.name}
+                    {banks.length === 0 && !loadingBanks ? (
+                      <SelectItem value="retry" onClick={loadBanks}>
+                        Retry loading banks
                       </SelectItem>
-                    ))}
+                    ) : (
+                      banks.map((bank) => (
+                        <SelectItem key={bank.code} value={bank.code}>
+                          {bank.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 {loadingBanks && (
@@ -228,6 +249,19 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Loading banks from Paystack...
                   </p>
+                )}
+                {!loadingBanks && banks.length === 0 && (
+                  <div className="mt-2">
+                    <p className="text-sm text-red-500">No banks loaded</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={loadBanks}
+                      className="mt-1"
+                    >
+                      Retry Loading Banks
+                    </Button>
+                  </div>
                 )}
               </div>
 
