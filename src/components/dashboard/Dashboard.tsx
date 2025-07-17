@@ -8,17 +8,17 @@ import {
   Heart, 
   User, 
   Settings,
-  Bell,
   Search,
   Home
 } from "lucide-react";
 import { Profile } from "@/hooks/useProfile";
 import { Wallet } from "@/hooks/useWallet";
 import HomePage from "./HomePage";
-import EnhancedProjectsPage from "./EnhancedProjectsPage";
-import EnhancedSupportPage from "./EnhancedSupportPage";
-import ProfilePage from "./ProfilePage";
+
 import SupportPage from "./SupportPage";
+import ProfilePage from "./ProfilePage";
+import CommentsPage from "./CommentsPage";
+
 import BottomNavigation from "./BottomNavigation";
 
 interface DashboardProps {
@@ -28,32 +28,51 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
-  const [activeTab, setActiveTab] = useState("home");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // TODO: fetch real notifications status
+  const hasNotifications = false;
+  const [activeTab, setActiveTab] = useState("support");
+  const [viewingCommentsForRequestId, setViewingCommentsForRequestId] = useState<string | null>(null);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    const getHeaderTitle = () => {
+    if (viewingCommentsForRequestId) return "Comments";
+    switch (activeTab) {
+      case 'home':
+        return 'Appacus';
+      case 'support':
+        return 'Support';
+      case 'profile':
+        return 'Profile';
+      default:
+        return 'Appacus';
+    }
+  };
 
   const navigation = [
     { id: "home", name: "Home", icon: Home },
-    { id: "projects", name: "Projects", icon: LayoutDashboard },
-    { id: "support", name: "Support Hub", icon: Heart },
+    { id: "support", name: "Support", icon: Heart },
     { id: "profile", name: "Profile", icon: User },
   ];
 
-  const renderContent = () => {
+    const renderContent = () => {
+    if (viewingCommentsForRequestId) {
+      return <CommentsPage supportRequestId={viewingCommentsForRequestId} onBack={() => setViewingCommentsForRequestId(null)} />;
+    }
     switch (activeTab) {
       case "home":
-        return <HomePage user={user} wallet={wallet} onNavigate={setActiveTab} />;
-      case "projects":
-        return <EnhancedProjectsPage />;
+        return <HomePage user={user} onNavigate={setActiveTab} />;
       case "support":
-        return <SupportPage />;
+        return <SupportPage user={user} wallet={wallet} onViewComments={setViewingCommentsForRequestId} />;
+      
+      
       case "profile":
         return <ProfilePage />;
       case "create":
         // For now, redirect to projects page where they can create
-        setActiveTab("projects");
-        return <EnhancedProjectsPage />;
+        setActiveTab("support");
+        return <SupportPage user={user} wallet={wallet} onViewComments={setViewingCommentsForRequestId} />;
       default:
-        return <HomePage user={user} wallet={wallet} onNavigate={setActiveTab} />;
+        return <HomePage user={user} onNavigate={setActiveTab} />;
     }
   };
 
@@ -78,7 +97,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
               <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">A</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">Appacus</span>
+              <span className="text-xl font-bold text-gray-900">{getHeaderTitle()}</span>
             </div>
           </div>
 
@@ -145,7 +164,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
                 <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center lg:hidden">
                   <span className="text-white font-bold text-sm">A</span>
                 </div>
-                <span className="text-xl font-bold text-gray-900">Appacus</span>
+                <span className="text-xl font-bold text-gray-900">{getHeaderTitle()}</span>
               </div>
               <div className="hidden md:flex items-center gap-4 ml-8">
                 <div className="relative">
@@ -157,12 +176,6 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
                   />
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-              </Button>
             </div>
           </div>
         </header>
@@ -177,6 +190,7 @@ const Dashboard = ({ user, wallet, onSignOut }: DashboardProps) => {
       <BottomNavigation 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
+        hasNotifications={hasNotifications}
       />
     </div>
   );

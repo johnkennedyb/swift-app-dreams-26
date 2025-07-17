@@ -1,59 +1,21 @@
-
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { 
-  ArrowUpRight,
-  ArrowDownRight,
-  Plus,
-  Minus,
-  Target,
-  Heart,
-  Users,
-  TrendingUp
-} from "lucide-react";
 import { Profile } from "@/hooks/useProfile";
-import { Wallet as WalletType } from "@/hooks/useWallet";
-import { usePayment } from "@/hooks/usePayment";
+import { useProjects } from "@/hooks/useProjects";
 import { useTransactions } from "@/hooks/useTransactions";
+import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 interface HomePageProps {
   user: Profile;
-  wallet: WalletType;
   onNavigate: (tab: string) => void;
 }
 
-const HomePage = ({ user, wallet, onNavigate }: HomePageProps) => {
-  const [fundAmount, setFundAmount] = useState<string>("");
-  const [withdrawAmount, setWithdrawAmount] = useState<string>("");
-  const { processPayment, loading: paymentLoading } = usePayment();
+const HomePage = ({ user, onNavigate }: HomePageProps) => {
+    const { projects } = useProjects();
   const { transactions, loading: transactionsLoading } = useTransactions();
 
-  const handleAddFunds = async () => {
-    const amount = parseFloat(fundAmount);
-    if (isNaN(amount) || amount <= 0) {
-      return;
-    }
-
-    const email = user.first_name ? `${user.first_name.toLowerCase()}@example.com` : "user@example.com";
-    await processPayment(amount, email);
-    setFundAmount("");
-  };
-
-  const handleWithdraw = async () => {
-    const amount = parseFloat(withdrawAmount);
-    if (isNaN(amount) || amount <= 0 || amount > wallet.balance) {
-      return;
-    }
-    
-    // TODO: Implement withdrawal to bank account logic
-    console.log(`Withdrawing ₦${amount} to bank account`);
-    setWithdrawAmount("");
-  };
-
-  // Get recent transactions (max 5)
+  // Filter for active projects to display
+    const activeProjects = projects.filter(p => p.status === "active").slice(0, 5);
   const recentTransactions = transactions.slice(0, 5);
 
   return (
@@ -61,121 +23,38 @@ const HomePage = ({ user, wallet, onNavigate }: HomePageProps) => {
       <div className="space-y-6 pb-20 px-4 lg:px-6">
         {/* Welcome Header */}
         <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-600 rounded-2xl p-6 text-white">
-          <div className="mb-4">
-            <h1 className="text-2xl font-bold">Welcome to Appacus!</h1>
-            <p className="text-purple-100">Your financial support platform</p>
-          </div>
-        </div>
-
-        {/* Wallet Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Add Funds Card */}
-          <Card className="p-4 lg:p-6">
-            <CardHeader className="p-0 mb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Plus className="w-5 h-5 text-green-600" />
-                Add Funds
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="amount" className="text-sm">Amount (₦)</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    placeholder="Enter amount"
-                    value={fundAmount}
-                    onChange={(e) => setFundAmount(e.target.value)}
-                    min="50"
-                    className="h-12"
-                  />
-                </div>
-                <Button 
-                  onClick={handleAddFunds} 
-                  disabled={paymentLoading || !fundAmount}
-                  className="w-full bg-green-600 hover:bg-green-700 h-12"
-                >
-                  {paymentLoading ? "Processing..." : "Add Funds"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Withdraw Funds Card */}
-          <Card className="p-4 lg:p-6">
-            <CardHeader className="p-0 mb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Minus className="w-5 h-5 text-red-600" />
-                Withdraw Funds
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="withdraw-amount" className="text-sm">Amount (₦)</Label>
-                  <Input
-                    id="withdraw-amount"
-                    type="number"
-                    placeholder="Enter amount"
-                    value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value)}
-                    max={wallet.balance}
-                    className="h-12"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Available: ₦{wallet.balance.toLocaleString()}
-                  </p>
-                </div>
-                <Button 
-                  onClick={handleWithdraw} 
-                  disabled={!withdrawAmount || parseFloat(withdrawAmount) > wallet.balance}
-                  className="w-full bg-red-600 hover:bg-red-700 h-12"
-                >
-                  Withdraw to Bank
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick Actions */}
-        <Card className="p-4 lg:p-6">
-          <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Button 
-              variant="outline" 
-              className="h-20 flex-col touch-feedback"
-              onClick={() => onNavigate("projects")}
-            >
-              <Target className="w-6 h-6 mb-2 text-purple-600" />
-              <span className="text-sm">Create Project</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 flex-col touch-feedback"
-              onClick={() => onNavigate("projects")}
-            >
-              <Heart className="w-6 h-6 mb-2 text-pink-600" />
-              <span className="text-sm">Browse Projects</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 flex-col touch-feedback"
+          <div className="mb-6 text-center">
+            <h1 className="text-2xl font-bold">Group financial contribution made easy.</h1>
+            <Button
               onClick={() => onNavigate("support")}
+              className="mt-4 bg-white text-purple-600 font-semibold px-6 hover:bg-purple-50"
             >
-              <Users className="w-6 h-6 mb-2 text-blue-600" />
-              <span className="text-sm">Support Hub</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 flex-col touch-feedback"
-              onClick={() => onNavigate("profile")}
-            >
-              <TrendingUp className="w-6 h-6 mb-2 text-green-600" />
-              <span className="text-sm">View Profile</span>
+              Ask for Support
             </Button>
           </div>
+        </div>
+
+        {/* Ongoing Support Requests */}
+        <Card className="p-4 lg:p-6">
+          <h2 className="text-lg font-semibold mb-4">Ongoing Support Requests</h2>
+          {activeProjects.length === 0 ? (
+            <p className="text-gray-500">No active requests yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {activeProjects.map(project => (
+                <div key={project.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 border-b border-gray-100 last:border-0">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{project.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{project.description}</p>
+                  </div>
+                  <div className="flex items-center gap-4 mt-2 sm:mt-0 sm:ml-4 shrink-0">
+                    <span className="text-xs text-gray-600">{project.comments_count || 0} Comments</span>
+                    <span className="text-xs text-gray-600">{project.project_members.length} Comply</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         {/* Recent Activity */}
@@ -217,7 +96,6 @@ const HomePage = ({ user, wallet, onNavigate }: HomePageProps) => {
                 <ArrowUpRight className="w-6 h-6 text-gray-400" />
               </div>
               <p>No transactions yet</p>
-              <p className="text-sm">Start by adding funds to your wallet</p>
             </div>
           )}
         </Card>

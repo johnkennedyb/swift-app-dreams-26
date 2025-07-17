@@ -24,23 +24,32 @@ import {
   Copy
 } from "lucide-react";
 import { useSupportRequests } from "@/hooks/useSupportRequests";
-import { useSupportComments } from "@/hooks/useSupportComments";
+import { useSupportComments } from '@/hooks/useSupportComments';
+
 import { useProjects } from "@/hooks/useProjects";
 import { useSupportPayment } from "@/hooks/useSupportPayment";
 import { useWallet } from "@/hooks/useWallet";
 import { useAuth } from "@/hooks/useAuth";
+import { Profile } from '@/hooks/useProfile';
+import { Wallet } from '@/hooks/useWallet';
 import ShareableSupportLink from "@/components/ShareableSupportLink";
 
-const SupportPage = () => {
-  const { supportRequests, loading: supportLoading, createSupportRequest } = useSupportRequests();
-  const { projects, loading: projectsLoading } = useProjects();
-  const { supportRequest, loading: supportPaymentLoading } = useSupportPayment();
-  const { wallet } = useWallet();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  
+interface SupportPageProps {
+  user: Profile;
+  wallet: Wallet;
+  onViewComments: (requestId: string) => void;
+}
+
+const SupportPage = ({ user, wallet, onViewComments }: SupportPageProps) => {
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [comment, setComment] = useState("");
+
+  const { supportRequests, loading: supportLoading, createSupportRequest, refetchSupportRequests } = useSupportRequests();
+  const { projects, loading: projectsLoading } = useProjects();
+  const { supportRequest, loading: supportPaymentLoading } = useSupportPayment();
+  const { addComment } = useSupportComments(selectedRequest);
+  const { toast } = useToast();
+
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [supportAmount, setSupportAmount] = useState("");
   const [formData, setFormData] = useState({
@@ -51,7 +60,7 @@ const SupportPage = () => {
   });
   const [isCreating, setIsCreating] = useState(false);
 
-  const { comments, loading: commentsLoading, addComment } = useSupportComments(selectedRequest);
+
 
   // Filter support requests to show only user's own requests
   const filteredSupportRequests = supportRequests.filter(request => 
@@ -66,7 +75,7 @@ const SupportPage = () => {
   const selectedSupportRequest = filteredSupportRequests.find(req => req.id === selectedRequest);
 
   const handleCopyLink = async (requestId: string, title: string) => {
-    const shareableUrl = `https://appacus3.onrender.com/support/${requestId}`;
+    const shareableUrl = `https://appacus.hpcan.com.ng/support/${requestId}`;
     try {
       await navigator.clipboard.writeText(shareableUrl);
       toast({
@@ -83,7 +92,7 @@ const SupportPage = () => {
   };
 
   const handleShareOnSocial = (platform: string, requestId: string, title: string, description: string, amountNeeded: number) => {
- const shareableUrl = `https://appacus3.onrender.com/support/${requestId}`;
+ const shareableUrl = `https://appacus.hpcan.com.ng/support/${requestId}`;
     const shareText = `Help support: ${title} - ${description.substring(0, 100)}... Amount needed: ₦${amountNeeded.toLocaleString()}`;
     const encodedText = encodeURIComponent(shareText);
     const encodedUrl = encodeURIComponent(shareableUrl);
@@ -145,11 +154,13 @@ const SupportPage = () => {
     setIsCreating(false);
   };
 
-  const handleAddComment = async () => {
-    if (!comment.trim()) return;
+
+
+    const handleAddComment = async () => {
+    if (!comment.trim() || !selectedRequest) return;
 
     const { error } = await addComment(comment);
-    
+
     if (error) {
       toast({
         title: "Error",
@@ -162,6 +173,7 @@ const SupportPage = () => {
         title: "Success",
         description: "Comment added successfully",
       });
+      refetchSupportRequests();
     }
   };
 
@@ -186,7 +198,7 @@ const SupportPage = () => {
   };
 
   const renderProjectDetail = (request: any) => (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={() => setSelectedRequest(null)}>
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -242,6 +254,33 @@ const SupportPage = () => {
 
         <p className="text-gray-700 mb-6">{request.description}</p>
 
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="font-semibold">Comments</h4>
+          <Button variant="outline" onClick={() => onViewComments(request.id)} className="flex items-center gap-2">
+            View Comments
+            {request.comment_count > 0 && (
+              <Badge className="bg-purple-100 text-purple-700">{request.comment_count}</Badge>
+            )}
+          </Button>
+        </div>
+
+        <div className="flex gap-3 mb-6">
+          <Input
+            placeholder="Add a comment..."
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            className="flex-1"
+            onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+          />
+          <Button 
+            className="bg-purple-600 hover:bg-purple-700"
+            onClick={handleAddComment}
+            disabled={!comment.trim()}
+          >
+            Send
+          </Button>
+        </div>
+
         <div className="mb-6">
           <h4 className="font-semibold mb-2">Support this request</h4>
           <p className="text-sm text-gray-600 mb-2">Your wallet balance: ₦{wallet?.balance.toLocaleString() || '0'}</p>
@@ -258,61 +297,12 @@ const SupportPage = () => {
               onClick={handleSupportRequest}
               disabled={supportPaymentLoading || !supportAmount}
             >
-              {supportPaymentLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Support"}
+              {supportPaymentLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Support"}
             </Button>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <h3 className="font-semibold text-gray-900">Comments</h3>
-          
-          {commentsLoading ? (
-            <div className="flex justify-center">
-              <Loader2 className="w-6 h-6 animate-spin" />
-            </div>
-          ) : (
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {comments.map((comment) => (
-                <div key={comment.id} className="flex space-x-3">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={comment.profiles?.avatar_url || undefined} />
-                    <AvatarFallback>
-                      {comment.profiles?.first_name?.charAt(0) || 'U'}{comment.profiles?.last_name?.charAt(0) || ''}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="bg-gray-100 rounded-lg p-3">
-                      <p className="text-sm font-medium">
-                        {comment.profiles?.first_name || 'Unknown'} {comment.profiles?.last_name || ''}
-                      </p>
-                      <p className="text-sm">{comment.comment}</p>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {new Date(comment.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          
-          <div className="flex gap-3">
-            <Input
-              placeholder="Add a comment..."
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              className="flex-1"
-              onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
-            />
-            <Button 
-              className="bg-purple-600 hover:bg-purple-700"
-              onClick={handleAddComment}
-              disabled={!comment.trim()}
-            >
-              Send
-            </Button>
-          </div>
-        </div>
+
       </Card>
 
       <ShareableSupportLink
@@ -331,14 +321,14 @@ const SupportPage = () => {
 
   if (supportLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex justify-between items-center">
         <Loader2 className="w-8 h-8 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-4 md:p-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900">My Support Requests</h1>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -428,7 +418,7 @@ const SupportPage = () => {
           </Button>
         </Card>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredSupportRequests.map(request => (
             <Card key={request.id} className="p-4 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-4">

@@ -5,7 +5,7 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: './', // <-- very important for Capacitor
+  base: '/', // <-- very important for Capacitor
   build: {
     outDir: 'dist', // <-- Capacitor needs this folder
   },

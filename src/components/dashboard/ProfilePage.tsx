@@ -88,45 +88,45 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto p-4">
+    <div className="space-y-6 max-w-4xl mx-auto p-4 md:p-6">
       {/* Colorful Wallet Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+        <Card className="bg-gray-100">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100">Total Balance</p>
+                <p className="text-gray-500">Total Balance</p>
                 <p className="text-2xl font-bold">
                   ₦{wallet?.balance.toLocaleString() || '0'}
                 </p>
               </div>
-              <Wallet className="w-8 h-8 text-purple-200" />
+              <Wallet className="w-8 h-8 text-gray-400" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white">
+        <Card className="bg-gray-100">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100">Available</p>
+                <p className="text-gray-500">Available</p>
                 <p className="text-2xl font-bold">
                   ₦{wallet?.balance.toLocaleString() || '0'}
                 </p>
               </div>
-              <PiggyBank className="w-8 h-8 text-blue-200" />
+              <PiggyBank className="w-8 h-8 text-gray-400" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
+        <Card className="bg-gray-100">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100">Growth</p>
+                <p className="text-gray-500">Growth</p>
                 <p className="text-2xl font-bold">+12%</p>
               </div>
-              <TrendingUp className="w-8 h-8 text-green-200" />
+              <TrendingUp className="w-8 h-8 text-gray-400" />
             </div>
           </CardContent>
         </Card>
@@ -136,7 +136,7 @@ const ProfilePage = () => {
       <div className="flex justify-center mb-6">
         <Button 
           onClick={() => setShowWithdrawal(true)}
-          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 text-lg"
+          className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-8 py-3 text-lg"
           size="lg"
         >
           <CreditCard className="w-5 h-5 mr-2" />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
@@ -21,6 +21,7 @@ export interface SupportRequest {
   projects: {
     name: string;
   };
+  comment_count: number;
 }
 
 export interface SupportComment {
@@ -41,18 +42,10 @@ export const useSupportRequests = () => {
   const [supportRequests, setSupportRequests] = useState<SupportRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      fetchSupportRequests();
-    } else {
-      setSupportRequests([]);
-      setLoading(false);
-    }
-  }, [user]);
-
-  const fetchSupportRequests = async () => {
+  const fetchSupportRequests = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
     try {
-      console.log('Fetching support requests for user:', user?.id);
       const { data, error } = await supabase
         .from('support_requests')
         .select(`
@@ -62,28 +55,39 @@ export const useSupportRequests = () => {
             last_name,
             avatar_url
           ),
+          support_comments(count),
           projects (
             name
           )
         `)
-        .eq('requester_id', user?.id) // Only fetch support requests created by current user
+        .eq('requester_id', user.id)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching support requests:', error);
         throw error;
       }
-      
-      console.log('Fetched support requests:', data);
-      setSupportRequests(data || []);
+
+      if (data) {
+        const processedData = data.map(request => ({
+          ...request,
+          comment_count: (request.support_comments as unknown as { count: number }[])[0]?.count || 0,
+        }));
+        setSupportRequests(processedData as SupportRequest[]);
+      } else {
+        setSupportRequests([]);
+      }
     } catch (error) {
       console.error('Error fetching support requests:', error);
       setSupportRequests([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchSupportRequests();
+  }, [fetchSupportRequests]);
 
   const createSupportRequest = async (requestData: {
     project_id: string;
@@ -93,14 +97,10 @@ export const useSupportRequests = () => {
     media_url?: string;
   }) => {
     if (!user) {
-      console.error('No user found');
       return { data: null, error: new Error('User not authenticated') };
     }
 
     try {
-      console.log('Creating support request with data:', requestData);
-      console.log('Current user ID:', user.id);
-
       const { data, error } = await supabase
         .from('support_requests')
         .insert([
@@ -113,15 +113,12 @@ export const useSupportRequests = () => {
         .single();
 
       if (error) {
-        console.error('Error creating support request:', error);
         throw error;
       }
 
-      console.log('Support request created successfully:', data);
       fetchSupportRequests();
       return { data, error: null };
     } catch (error) {
-      console.error('Error creating support request:', error);
       return { data: null, error };
     }
   };
@@ -130,6 +127,6 @@ export const useSupportRequests = () => {
     supportRequests,
     loading,
     createSupportRequest,
-    refetch: fetchSupportRequests,
+    refetchSupportRequests: fetchSupportRequests,
   };
 };
