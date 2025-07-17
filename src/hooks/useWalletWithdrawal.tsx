@@ -15,6 +15,7 @@ export const useWalletWithdrawal = () => {
     accountNumber: string;
     bankName: string;
     accountName: string;
+    bankCode: string;
   }) => {
     if (!user || !wallet) {
       toast({
@@ -45,7 +46,33 @@ export const useWalletWithdrawal = () => {
 
     setLoading(true);
     try {
-      // Update wallet balance
+      // First create transfer recipient via Paystack
+      const { data: recipientData, error: recipientError } = await supabase.functions.invoke('create-transfer-recipient', {
+        body: {
+          type: 'nuban',
+          name: bankDetails.accountName,
+          account_number: bankDetails.accountNumber,
+          bank_code: bankDetails.bankCode,
+          currency: 'NGN'
+        }
+      });
+
+      if (recipientError) throw recipientError;
+      if (!recipientData.status) throw new Error(recipientData.message);
+
+      // Then initiate the transfer
+      const { data: transferData, error: transferError } = await supabase.functions.invoke('initiate-transfer', {
+        body: {
+          amount: Math.round(amount * 100), // Convert to kobo
+          recipient: recipientData.data.recipient_code,
+          reason: `Wallet withdrawal to ${bankDetails.bankName}`
+        }
+      });
+
+      if (transferError) throw transferError;
+      if (!transferData.status) throw new Error(transferData.message);
+
+      // Update wallet balance and create transaction record
       const { error: walletError } = await supabase
         .from('wallets')
         .update({ 
@@ -56,7 +83,7 @@ export const useWalletWithdrawal = () => {
 
       if (walletError) throw walletError;
 
-      // Create withdrawal transaction record
+      // Create transaction record
       const { error: transactionError } = await supabase
         .from('transactions')
         .insert([
@@ -66,7 +93,7 @@ export const useWalletWithdrawal = () => {
             amount: amount,
             description: `Withdrawal to ${bankDetails.bankName} - ${bankDetails.accountNumber}`,
             status: 'completed',
-            reference: `WD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            reference: transferData.data?.reference || `WD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           }
         ]);
 
@@ -81,11 +108,11 @@ export const useWalletWithdrawal = () => {
       });
       
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing withdrawal:', error);
       toast({
         title: "Error",
-        description: "Failed to process withdrawal",
+        description: error.message || "Failed to process withdrawal",
         variant: "destructive",
       });
       return false;

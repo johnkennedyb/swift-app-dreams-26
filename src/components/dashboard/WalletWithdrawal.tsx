@@ -6,14 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/hooks/useWallet";
+import { useWalletWithdrawal } from "@/hooks/useWalletWithdrawal";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 import { 
   getBankList, 
-  verifyBankAccount, 
-  createTransferRecipient, 
-  initiateTransfer,
-  BankAccount 
+  verifyBankAccount,
 } from "@/services/bankValidationService";
 
 interface WalletWithdrawalProps {
@@ -22,24 +20,14 @@ interface WalletWithdrawalProps {
 
 interface Bank {
   name: string;
-  slug: string;
   code: string;
-  longcode: string;
-  gateway: string;
-  pay_with_bank: boolean;
   active: boolean;
-  country: string;
-  currency: string;
-  type: string;
-  is_deleted: boolean;
-  createdAt: string;
-  updatedAt: string;
 }
 
 const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
-  const { wallet, refetch: refetchWallet } = useWallet();
+  const { wallet } = useWallet();
+  const { withdrawToBank, loading } = useWalletWithdrawal();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [banks, setBanks] = useState<Bank[]>([]);
   const [loadingBanks, setLoadingBanks] = useState(true);
@@ -50,40 +38,26 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
     bankName: "",
     accountName: "",
   });
-  const [verifiedAccount, setVerifiedAccount] = useState<BankAccount | null>(null);
+  const [verifiedAccount, setVerifiedAccount] = useState<boolean>(false);
   const [step, setStep] = useState<'details' | 'confirm'>('details');
 
   useEffect(() => {
-    console.log('WalletWithdrawal mounted, loading banks...');
     loadBanks();
   }, []);
 
   const loadBanks = async () => {
     try {
-      console.log('Starting to load banks...');
       const response = await getBankList();
-      console.log('Bank list response:', response);
       
       if (response.status && response.data) {
-        // Filter for Nigerian banks that are active
-        const nigerianBanks = response.data.filter((bank: Bank) => 
+        const nigerianBanks = response.data.filter((bank: any) => 
           bank.active && 
           bank.country === 'Nigeria' && 
           !bank.is_deleted &&
           bank.code
         );
-        console.log('Filtered Nigerian banks:', nigerianBanks);
         setBanks(nigerianBanks);
-        
-        if (nigerianBanks.length === 0) {
-          toast({
-            title: "Notice",
-            description: "No active Nigerian banks found",
-            variant: "destructive",
-          });
-        }
       } else {
-        console.error('Failed to load banks:', response.message);
         toast({
           title: "Error",
           description: response.message || "Failed to load bank list",
@@ -103,9 +77,7 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
   };
 
   const handleBankSelect = (bankCode: string) => {
-    console.log('Bank selected with code:', bankCode);
     const selectedBank = banks.find(bank => bank.code === bankCode);
-    console.log('Selected bank details:', selectedBank);
     
     if (selectedBank) {
       setBankDetails(prev => ({
@@ -113,11 +85,7 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
         bankCode: selectedBank.code,
         bankName: selectedBank.name,
       }));
-      setVerifiedAccount(null);
-      console.log('Bank details updated:', {
-        bankCode: selectedBank.code,
-        bankName: selectedBank.name
-      });
+      setVerifiedAccount(false);
     }
   };
 
@@ -140,22 +108,15 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
       return;
     }
 
-    console.log('Verifying account:', bankDetails);
     setVerifying(true);
     
     try {
       const response = await verifyBankAccount(bankDetails.accountNumber, bankDetails.bankCode);
-      console.log('Account verification response:', response);
       
       if (response.status && response.data) {
         const accountName = response.data.account_name;
         setBankDetails(prev => ({ ...prev, accountName }));
-        setVerifiedAccount({
-          account_number: bankDetails.accountNumber,
-          bank_code: bankDetails.bankCode,
-          bank_name: bankDetails.bankName,
-          account_name: accountName,
-        });
+        setVerifiedAccount(true);
         
         toast({
           title: "Success",
@@ -187,59 +148,9 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
 
     const withdrawalAmount = parseFloat(amount);
     
-    if (wallet.balance < withdrawalAmount) {
-      toast({
-        title: "Insufficient Balance",
-        description: "You don't have enough funds in your wallet",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (withdrawalAmount < 100) {
-      toast({
-        title: "Minimum Withdrawal",
-        description: "Minimum withdrawal amount is ₦100",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      console.log('Creating transfer recipient...');
-      const recipientResponse = await createTransferRecipient(
-        verifiedAccount.account_number,
-        verifiedAccount.bank_code,
-        verifiedAccount.account_name
-      );
-
-      console.log('Recipient response:', recipientResponse);
-
-      if (!recipientResponse.status) {
-        throw new Error(recipientResponse.message || 'Failed to create recipient');
-      }
-
-      console.log('Initiating transfer...');
-      const transferResponse = await initiateTransfer(
-        withdrawalAmount,
-        recipientResponse.data.recipient_code,
-        `Wallet withdrawal to ${verifiedAccount.bank_name}`
-      );
-
-      console.log('Transfer response:', transferResponse);
-
-      if (!transferResponse.status) {
-        throw new Error(transferResponse.message || 'Failed to initiate transfer');
-      }
-
-      refetchWallet();
-      
-      toast({
-        title: "Success",
-        description: `Successfully withdrew ₦${withdrawalAmount.toLocaleString()} to your bank account`,
-      });
-      
+    const success = await withdrawToBank(withdrawalAmount, bankDetails);
+    
+    if (success) {
       // Reset form
       setAmount("");
       setBankDetails({
@@ -248,18 +159,9 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
         bankName: "",
         accountName: "",
       });
-      setVerifiedAccount(null);
+      setVerifiedAccount(false);
       setStep('details');
       onBack();
-    } catch (error: any) {
-      console.error('Error processing withdrawal:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to process withdrawal",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -327,11 +229,6 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
                     Loading banks from Paystack...
                   </p>
                 )}
-                {banks.length > 0 && !loadingBanks && (
-                  <p className="text-sm text-gray-500 mt-1">
-                    {banks.length} banks available
-                  </p>
-                )}
               </div>
 
               <div>
@@ -342,7 +239,7 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, '');
                     setBankDetails(prev => ({ ...prev, accountNumber: value }));
-                    setVerifiedAccount(null);
+                    setVerifiedAccount(false);
                   }}
                   placeholder="Enter your 10-digit account number"
                   maxLength={10}
@@ -380,10 +277,10 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
                     <span className="font-medium">Account Verified ✅</span>
                   </div>
                   <p className="text-sm text-green-700 mt-1 font-medium">
-                    {verifiedAccount.account_name}
+                    {bankDetails.accountName}
                   </p>
                   <p className="text-sm text-green-600">
-                    {verifiedAccount.bank_name} - {verifiedAccount.account_number}
+                    {bankDetails.bankName} - {bankDetails.accountNumber}
                   </p>
                 </div>
               )}
@@ -410,15 +307,15 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
                   </div>
                   <div className="flex justify-between">
                     <span>Bank:</span>
-                    <span>{verifiedAccount.bank_name}</span>
+                    <span>{bankDetails.bankName}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Account:</span>
-                    <span>{verifiedAccount.account_number}</span>
+                    <span>{bankDetails.accountNumber}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Name:</span>
-                    <span>{verifiedAccount.account_name}</span>
+                    <span>{bankDetails.accountName}</span>
                   </div>
                 </div>
 
