@@ -183,7 +183,7 @@ const WalletWithdrawal = ({ onBack }: WalletWithdrawalProps) => {
   const canProceed = verifiedAccount && amount && parseFloat(amount) >= 100;
 
   return (
-    <div className="max-w-md mx-auto p-4">
+    <div className="max-w-md mx-auto p-4 pb-20">
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
