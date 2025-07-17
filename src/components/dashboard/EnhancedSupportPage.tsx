@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,8 +8,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Users, 
@@ -16,43 +15,23 @@ import {
   Plus,
   Search,
   Filter,
-  Loader2,
-  UserPlus,
-  ArrowLeft
+  Loader2
 } from "lucide-react";
 import { useSupportRequests } from "@/hooks/useSupportRequests";
-import { useProjects } from "@/hooks/useProjects";
 import { useSupportPayment } from "@/hooks/useSupportPayment";
 import { useWallet } from "@/hooks/useWallet";
-import { supabase } from "@/integrations/supabase/client";
-import ProjectDetailPage from "./ProjectDetailPage";
-
-interface ProjectMember {
-  id: string;
-  user_id: string;
-  profiles: {
-    first_name: string;
-    last_name: string;
-    avatar_url: string | null;
-  } | null;
-}
 
 const EnhancedSupportPage = () => {
   const { supportRequests, loading: supportLoading, createSupportRequest } = useSupportRequests();
-  const { projects, loading: projectsLoading } = useProjects();
   const { supportRequest, loading: supportPaymentLoading } = useSupportPayment();
   const { wallet } = useWallet();
   const { toast } = useToast();
   
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
-  const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [supportAmount, setSupportAmount] = useState("");
   const [showSupportDialog, setShowSupportDialog] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    project_id: "",
     title: "",
     description: "",
     amount_needed: ""
@@ -60,78 +39,8 @@ const EnhancedSupportPage = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // If a project is selected for detail view, show ProjectDetailPage
-  if (selectedProjectId) {
-    return (
-      <ProjectDetailPage 
-        projectId={selectedProjectId} 
-        onBack={() => setSelectedProjectId(null)} 
-      />
-    );
-  }
-
-  const handleProjectChange = async (projectId: string) => {
-    setFormData(prev => ({ ...prev, project_id: projectId }));
-    setSelectedMembers([]);
-    
-    if (projectId) {
-      try {
-        const { data, error } = await supabase
-          .from('project_members')
-          .select(`
-            id,
-            user_id,
-            profiles!project_members_user_id_fkey (
-              first_name,
-              last_name,
-              avatar_url
-            )
-          `)
-          .eq('project_id', projectId);
-
-        if (error) throw error;
-        
-        // Filter out members with null profiles and log any issues
-        const validMembers = (data || []).filter(member => {
-          if (!member.profiles) {
-            console.warn(`Member ${member.user_id} has no profile data`);
-            return false;
-          }
-          return true;
-        });
-        
-        setProjectMembers(validMembers);
-        
-        if (validMembers.length < (data || []).length) {
-          toast({
-            title: "Note",
-            description: "Some project members don't have complete profile information",
-            variant: "default",
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching project members:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load project members",
-          variant: "destructive",
-        });
-      }
-    } else {
-      setProjectMembers([]);
-    }
-  };
-
-  const handleMemberToggle = (userId: string) => {
-    setSelectedMembers(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
-    );
-  };
-
   const handleCreateRequest = async () => {
-    if (!formData.project_id || !formData.title || !formData.description || !formData.amount_needed) {
+    if (!formData.title || !formData.description || !formData.amount_needed) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -140,18 +49,8 @@ const EnhancedSupportPage = () => {
       return;
     }
 
-    if (selectedMembers.length === 0) {
-      toast({
-        title: "Error", 
-        description: "Please select at least one member to support you",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsCreating(true);
     const { error } = await createSupportRequest({
-      project_id: formData.project_id,
       title: formData.title,
       description: formData.description,
       amount_needed: parseFloat(formData.amount_needed),
@@ -169,9 +68,7 @@ const EnhancedSupportPage = () => {
         description: "Support request created successfully",
       });
       setShowCreateDialog(false);
-      setFormData({ project_id: "", title: "", description: "", amount_needed: "" });
-      setSelectedMembers([]);
-      setProjectMembers([]);
+      setFormData({ title: "", description: "", amount_needed: "" });
     }
     setIsCreating(false);
   };
@@ -227,13 +124,7 @@ const EnhancedSupportPage = () => {
       profileName.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  const filteredMembers = projectMembers.filter(member => {
-    if (!member.profiles) return false;
-    const memberName = `${member.profiles.first_name} ${member.profiles.last_name}`;
-    return memberName.toLowerCase().includes(searchTerm.toLowerCase());
-  });
-
-  if (supportLoading || projectsLoading) {
+  if (supportLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -247,7 +138,7 @@ const EnhancedSupportPage = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Support Hub</h1>
-          <p className="text-gray-600 mt-1">Request support from your project community</p>
+          <p className="text-gray-600 mt-1">Request support from the community</p>
         </div>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
@@ -261,34 +152,6 @@ const EnhancedSupportPage = () => {
               <DialogTitle>Create Support Request</DialogTitle>
             </DialogHeader>
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="project_id">Project *</Label>
-                  <Select value={formData.project_id} onValueChange={handleProjectChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="amount_needed">Amount Needed (NGN) *</Label>
-                  <Input
-                    id="amount_needed"
-                    type="number"
-                    value={formData.amount_needed}
-                    onChange={(e) => setFormData(prev => ({ ...prev, amount_needed: e.target.value }))}
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-              
               <div>
                 <Label htmlFor="title">Support Title *</Label>
                 <Input
@@ -310,75 +173,23 @@ const EnhancedSupportPage = () => {
                 />
               </div>
 
-              {formData.project_id && (
-                <div>
-                  <Label className="text-base font-semibold">Select Members to Support You *</Label>
-                  <p className="text-sm text-gray-600 mb-3">Choose project members you'd like to request support from</p>
-                  
-                  {projectMembers.length > 0 && (
-                    <div className="relative mb-3">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        placeholder="Search members..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                  )}
-
-                  <div className="max-h-64 overflow-y-auto border rounded-lg p-3 space-y-2">
-                    {projectMembers.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
-                        <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                        <p>No members found in this project</p>
-                        <p className="text-xs mt-1">Members may need to complete their profiles</p>
-                      </div>
-                    ) : filteredMembers.length === 0 ? (
-                      <div className="text-center py-4 text-gray-500">
-                        <p>No members match your search</p>
-                      </div>
-                    ) : (
-                      filteredMembers.map((member) => (
-                        <div key={member.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-lg">
-                          <Checkbox
-                            checked={selectedMembers.includes(member.user_id)}
-                            onCheckedChange={() => handleMemberToggle(member.user_id)}
-                          />
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src={member.profiles?.avatar_url || undefined} />
-                            <AvatarFallback className="bg-purple-100 text-purple-600">
-                              {member.profiles ? 
-                                `${member.profiles.first_name.charAt(0)}${member.profiles.last_name.charAt(0)}` : 
-                                'UN'
-                              }
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">
-                            {member.profiles ? 
-                              `${member.profiles.first_name} ${member.profiles.last_name}` : 
-                              'Unknown User'
-                            }
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  
-                  {selectedMembers.length > 0 && (
-                    <p className="text-sm text-green-600 mt-2">
-                      ✓ {selectedMembers.length} member{selectedMembers.length !== 1 ? 's' : ''} selected
-                    </p>
-                  )}
-                </div>
-              )}
+              <div>
+                <Label htmlFor="amount_needed">Amount Needed (NGN) *</Label>
+                <Input
+                  id="amount_needed"
+                  type="number"
+                  value={formData.amount_needed}
+                  onChange={(e) => setFormData(prev => ({ ...prev, amount_needed: e.target.value }))}
+                  placeholder="0.00"
+                />
+              </div>
 
               <Button 
                 onClick={handleCreateRequest} 
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3"
                 disabled={isCreating}
               >
-                {isCreating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <UserPlus className="w-4 h-4 mr-2" />}
+                {isCreating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
                 Create Support Request
               </Button>
             </div>
@@ -415,7 +226,7 @@ const EnhancedSupportPage = () => {
               <CardContent className="p-12 text-center">
                 <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">No Support Requests</h3>
-                <p className="text-gray-500 mb-4">Be the first to create a support request and get help from your community.</p>
+                <p className="text-gray-500 mb-4">Be the first to create a support request and get help from the community.</p>
                 <Button 
                   onClick={() => setShowCreateDialog(true)}
                   className="bg-purple-600 hover:bg-purple-700"
@@ -450,7 +261,6 @@ const EnhancedSupportPage = () => {
                           'User Profile Loading...'
                         }
                       </p>
-                      <p className="text-sm text-gray-500">{request.projects?.name || 'Unknown Project'}</p>
                     </div>
                     <Badge variant="secondary" className="text-xs">
                       {request.status}
@@ -483,19 +293,6 @@ const EnhancedSupportPage = () => {
                     <span className="text-xs text-gray-500">
                       {new Date(request.created_at).toLocaleDateString()}
                     </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs text-purple-600 hover:text-purple-700"
-                      onClick={() => {
-                        const project = projects.find(p => p.id === request.project_id);
-                        if (project) {
-                          setSelectedProjectId(project.id);
-                        }
-                      }}
-                    >
-                      View Project
-                    </Button>
                   </div>
                 </CardContent>
               </Card>

@@ -1,5 +1,6 @@
+
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,29 +8,21 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { 
   MessageCircle, 
   Heart, 
-  Users, 
-  Calendar,
   ArrowRight,
-  Play,
   Image as ImageIcon,
   Loader2,
   ArrowLeft,
-  Share2,
-  ExternalLink,
-  Copy
+  Copy,
+  Share2
 } from "lucide-react";
 import { useSupportRequests } from "@/hooks/useSupportRequests";
 import { useSupportComments } from '@/hooks/useSupportComments';
-
-import { useProjects } from "@/hooks/useProjects";
 import { useSupportPayment } from "@/hooks/useSupportPayment";
 import { useWallet } from "@/hooks/useWallet";
-import { useAuth } from "@/hooks/useAuth";
 import { Profile } from '@/hooks/useProfile';
 import { Wallet } from '@/hooks/useWallet';
 import ShareableSupportLink from "@/components/ShareableSupportLink";
@@ -45,7 +38,6 @@ const SupportPage = ({ user, wallet, onViewComments }: SupportPageProps) => {
   const [comment, setComment] = useState("");
 
   const { supportRequests, loading: supportLoading, createSupportRequest, refetchSupportRequests } = useSupportRequests();
-  const { projects, loading: projectsLoading } = useProjects();
   const { supportRequest, loading: supportPaymentLoading } = useSupportPayment();
   const { addComment } = useSupportComments(selectedRequest);
   const { toast } = useToast();
@@ -53,23 +45,15 @@ const SupportPage = ({ user, wallet, onViewComments }: SupportPageProps) => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [supportAmount, setSupportAmount] = useState("");
   const [formData, setFormData] = useState({
-    project_id: "",
     title: "",
     description: "",
     amount_needed: ""
   });
   const [isCreating, setIsCreating] = useState(false);
 
-
-
   // Filter support requests to show only user's own requests
   const filteredSupportRequests = supportRequests.filter(request => 
     request.requester_id === user?.id
-  );
-
-  // Filter projects to show only user's own projects
-  const userProjects = projects.filter(project => 
-    project.admin_id === user?.id
   );
 
   const selectedSupportRequest = filteredSupportRequests.find(req => req.id === selectedRequest);
@@ -92,7 +76,7 @@ const SupportPage = ({ user, wallet, onViewComments }: SupportPageProps) => {
   };
 
   const handleShareOnSocial = (platform: string, requestId: string, title: string, description: string, amountNeeded: number) => {
- const shareableUrl = `https://appacus.hpcan.com.ng/support/${requestId}`;
+    const shareableUrl = `https://appacus.hpcan.com.ng/support/${requestId}`;
     const shareText = `Help support: ${title} - ${description.substring(0, 100)}... Amount needed: ₦${amountNeeded.toLocaleString()}`;
     const encodedText = encodeURIComponent(shareText);
     const encodedUrl = encodeURIComponent(shareableUrl);
@@ -120,7 +104,7 @@ const SupportPage = ({ user, wallet, onViewComments }: SupportPageProps) => {
   };
 
   const handleCreateRequest = async () => {
-    if (!formData.project_id || !formData.title || !formData.description || !formData.amount_needed) {
+    if (!formData.title || !formData.description || !formData.amount_needed) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -131,7 +115,6 @@ const SupportPage = ({ user, wallet, onViewComments }: SupportPageProps) => {
 
     setIsCreating(true);
     const { data, error } = await createSupportRequest({
-      project_id: formData.project_id,
       title: formData.title,
       description: formData.description,
       amount_needed: parseFloat(formData.amount_needed),
@@ -149,14 +132,12 @@ const SupportPage = ({ user, wallet, onViewComments }: SupportPageProps) => {
         description: "Support request created successfully! Copy the link to share with supporters.",
       });
       setShowCreateDialog(false);
-      setFormData({ project_id: "", title: "", description: "", amount_needed: "" });
+      setFormData({ title: "", description: "", amount_needed: "" });
     }
     setIsCreating(false);
   };
 
-
-
-    const handleAddComment = async () => {
+  const handleAddComment = async () => {
     if (!comment.trim() || !selectedRequest) return;
 
     const { error } = await addComment(comment);
@@ -236,7 +217,6 @@ const SupportPage = ({ user, wallet, onViewComments }: SupportPageProps) => {
             <h3 className="font-semibold">
               {request.profiles?.first_name || 'Unknown'} {request.profiles?.last_name || ''}
             </h3>
-            <p className="text-sm text-gray-600">{request.projects?.name || 'Unknown Project'}</p>
           </div>
         </div>
 
@@ -301,8 +281,6 @@ const SupportPage = ({ user, wallet, onViewComments }: SupportPageProps) => {
             </Button>
           </div>
         </div>
-
-
       </Card>
 
       <ShareableSupportLink
@@ -321,7 +299,7 @@ const SupportPage = ({ user, wallet, onViewComments }: SupportPageProps) => {
 
   if (supportLoading) {
     return (
-      <div className="flex justify-between items-center">
+      <div className="flex justify-center items-center">
         <Loader2 className="w-8 h-8 animate-spin" />
       </div>
     );
@@ -342,26 +320,6 @@ const SupportPage = ({ user, wallet, onViewComments }: SupportPageProps) => {
               <DialogTitle>Create Support Request</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="project_id">Project</Label>
-                <Select
-                  value={formData.project_id}
-                  onValueChange={(value) =>
-                    setFormData(prev => ({ ...prev, project_id: value }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a project" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {userProjects.map(p => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
               <div>
                 <Label htmlFor="title">Title</Label>
                 <Input
@@ -434,9 +392,6 @@ const SupportPage = ({ user, wallet, onViewComments }: SupportPageProps) => {
                     <h3 className="font-semibold text-gray-900">{request.title}</h3>
                     <p className="text-sm text-gray-600">
                       By {request.profiles?.first_name || 'Unknown'} {request.profiles?.last_name || ''}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Project: {request.projects?.name || 'Unknown Project'}
                     </p>
                     <p className="text-lg font-bold text-purple-600 mt-1">
                       ₦{request.amount_needed.toLocaleString()}

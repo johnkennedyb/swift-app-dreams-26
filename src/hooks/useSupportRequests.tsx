@@ -1,10 +1,10 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
 export interface SupportRequest {
   id: string;
-  project_id: string;
   requester_id: string;
   title: string;
   description: string;
@@ -17,9 +17,6 @@ export interface SupportRequest {
     first_name: string;
     last_name: string;
     avatar_url: string | null;
-  };
-  projects: {
-    name: string;
   };
   comment_count: number;
 }
@@ -43,7 +40,6 @@ export const useSupportRequests = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchSupportRequests = useCallback(async () => {
-    if (!user) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -55,12 +51,8 @@ export const useSupportRequests = () => {
             last_name,
             avatar_url
           ),
-          support_comments(count),
-          projects (
-            name
-          )
+          support_comments(count)
         `)
-        .eq('requester_id', user.id)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
@@ -83,14 +75,13 @@ export const useSupportRequests = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     fetchSupportRequests();
   }, [fetchSupportRequests]);
 
   const createSupportRequest = async (requestData: {
-    project_id: string;
     title: string;
     description: string;
     amount_needed: number;
